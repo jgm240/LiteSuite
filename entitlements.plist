@@ -22,5 +22,13 @@
 	<true/>
 	<key>com.apple.private.mobileinstall.allowedSignerIdentity</key>
 	<true/>
+	<key>com.apple.backboard.client</key>
+	<true/>
+	<key>com.apple.backboard.display.services</key>
+	<true/>
+	<key>com.apple.backboard.hid.services</key>
+	<true/>
+	<key>com.apple.backboardd.debugapplications</key>
+	<true/>
 </dict>
 </plist>

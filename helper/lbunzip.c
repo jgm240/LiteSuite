@@ -126,9 +126,44 @@ int lbunzip_extract(const char *ipa, const char *dest) {
 	return 0;
 }
 
+// Unpacks a file written as [u32 little-endian size][zlib stream] to `dst` (mode 0755).
+// Used to restore LiteBoard's original entitlement-signed binary: installers that re-sign the
+// app replace its signature (and entitlements), but leave opaque data files alone.
+int lbinflate_file(const char *src, const char *dst) {
+	FILE *f = fopen(src, "rb");
+	if (!f) { perror(src); return 1; }
+	fseek(f, 0, SEEK_END);
+	long n = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	if (n < 8 || n > (64L << 20)) { fprintf(stderr, "bad blob size\n"); return 1; }
+	uint8_t *in = malloc(n);
+	if (!in || fread(in, 1, n, f) != (size_t)n) { fprintf(stderr, "read failed\n"); return 1; }
+	fclose(f);
+	uLongf outLen = u32(in);
+	if (outLen == 0 || outLen > (128UL << 20)) { fprintf(stderr, "bad original size\n"); return 1; }
+	uint8_t *out = malloc(outLen);
+	if (!out || uncompress(out, &outLen, in + 4, n - 4) != Z_OK) { fprintf(stderr, "inflate failed\n"); return 1; }
+	char tmp[2048];
+	snprintf(tmp, sizeof tmp, "%s.tmp", dst);
+	int fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC, 0755);
+	if (fd < 0) { perror(tmp); return 1; }
+	size_t off = 0;
+	while (off < outLen) {
+		ssize_t w = write(fd, out + off, outLen - off);
+		if (w <= 0) { perror("write"); return 1; }
+		off += w;
+	}
+	fchmod(fd, 0755);
+	close(fd);
+	if (rename(tmp, dst) != 0) { perror("rename"); return 1; }
+	free(in); free(out);
+	return 0;
+}
+
 #ifdef LBUNZIP_STANDALONE
 int main(int argc, char **argv) {
-	if (argc != 3) { fprintf(stderr, "usage: lbunzip file.ipa destdir\n"); return 2; }
+	if (argc == 4 && strcmp(argv[1], "--inflate") == 0) return lbinflate_file(argv[2], argv[3]);
+	if (argc != 3) { fprintf(stderr, "usage: lbunzip file.ipa destdir | --inflate blob dest\n"); return 2; }
 	return lbunzip_extract(argv[1], argv[2]);
 }
 #endif

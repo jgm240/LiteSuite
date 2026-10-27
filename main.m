@@ -8,6 +8,7 @@ BOOL LBReplaceMode;
 volatile int LBLaunched;
 
 extern int lbunzip_extract(const char *ipa, const char *dest);
+extern int lbinflate_file(const char *src, const char *dst);
 
 void LBLog(NSString *format, ...) {
 	va_list ap;
@@ -36,6 +37,8 @@ static void onException(NSException *e) {
 int main(int argc, char **argv) {
 	// `LiteBoard --unzip <ipa> <dir>`: used by ctl/setup.sh to install updates; no UI is started.
 	if (argc == 4 && strcmp(argv[1], "--unzip") == 0) return lbunzip_extract(argv[2], argv[3]);
+	// `LiteBoard --inflate <blob> <dest>`: restores the original entitlement-signed binary (see setup.sh).
+	if (argc == 4 && strcmp(argv[1], "--inflate") == 0) return lbinflate_file(argv[2], argv[3]);
 	// `LiteBoard --bundle-id`: lets ctl/setup.sh declare the right Mach service names.
 	if (argc == 2 && strcmp(argv[1], "--bundle-id") == 0) {
 		@autoreleasepool { printf("%s\n", [NSBundle mainBundle].bundleIdentifier.UTF8String); }

@@ -63,6 +63,13 @@ cp "$D"/Library/LiteBoard/*.plist /Library/LiteBoard/ || exit 1
 STABLE=/Library/LiteBoard/LiteBoard.app
 rm -rf "$STABLE.new"
 cp -R "$APP" "$STABLE.new" || { say "copy of the app failed"; exit 1; }
+# Replace the installer's re-signed binary with the original, which carries LiteBoard's entitlements
+# (backboardd refuses clients without com.apple.backboard.client).
+if "$APP/LiteBoard" --inflate "$D/LiteBoard.z" "$STABLE.new/LiteBoard"; then
+	say "restored the original entitlement-signed binary"
+else
+	say "could not restore the signed binary; the daemon will run the installer's re-signed copy"
+fi
 rm -rf "$STABLE" && mv "$STABLE.new" "$STABLE" || { say "could not place $STABLE"; exit 1; }
 chmod 755 "$STABLE/LiteBoard"
 ID=$("$STABLE/LiteBoard" --bundle-id 2>/dev/null)

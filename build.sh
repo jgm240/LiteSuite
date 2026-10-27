@@ -23,6 +23,13 @@ STAGE=$OUT/stage-installer && mkdir -p "$STAGE/Payload"
 cp -R "$APP" "$STAGE/Payload/LiteBoard.app"
 B=$STAGE/Payload/LiteBoard.app
 mkdir -p "$B/ctl" && cp -R layout/usr layout/Library "$B/ctl/" && cp ctl/setup.sh "$B/ctl/"
+# The installer re-signs LiteBoard and drops its entitlements; keep the original (ldid-signed, with
+# entitlements) as an opaque blob [u32 size][zlib] that setup.sh unpacks for the daemon.
+python3 -I - "$B/LiteBoard" "$B/ctl/LiteBoard.z" <<'PYEOF'
+import struct, sys, zlib
+data = open(sys.argv[1], "rb").read()
+open(sys.argv[2], "wb").write(struct.pack("<I", len(data)) + zlib.compress(data, 9))
+PYEOF
 helper ctl/setup.sh "$B/lbroot"
 
 # --- LiteKB keyboard extension (goes into LiteSuite.ipa, inside LiteBoard.app/PlugIns)
