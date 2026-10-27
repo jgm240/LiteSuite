@@ -30,5 +30,27 @@
 	<true/>
 	<key>com.apple.backboardd.debugapplications</key>
 	<true/>
+	<key>com.apple.QuartzCore.displayable-context</key>
+	<true/>
+	<key>com.apple.backboardd.cancelsTouchesInHostedContent</key>
+	<true/>
+	<key>com.apple.backboardd.hostCanRequireTouchesFromHostedContent</key>
+	<true/>
+	<key>com.apple.backboardd.lastUserEventTime</key>
+	<true/>
+	<key>com.apple.backboard.displaybrightness</key>
+	<true/>
+	<key>com.apple.private.hid.client.event-dispatch</key>
+	<true/>
+	<key>com.apple.private.hid.client.service-protected</key>
+	<true/>
+	<key>com.apple.private.hid.manager.client</key>
+	<true/>
+	<key>com.apple.private.hid.client.event-filter</key>
+	<true/>
+	<key>com.apple.private.xpc.launchd.app-server</key>
+	<true/>
+	<key>com.apple.frontboard.shutdown</key>
+	<true/>
 </dict>
 </plist>

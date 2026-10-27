@@ -130,9 +130,31 @@ cat > /Library/LiteBoard/com.liteboard.daemon.plist <<EOF
 		<key>LITEBOARD_REPLACE</key>
 		<string>1</string>
 	</dict>
+	<key>CFBundleIdentifier</key>
+	<string>com.apple.springboard</string>
+	<key>EmbeddedHomeScreen</key>
+	<true/>
+	<key>EnablePressuredExit</key>
+	<false/>
+	<key>EnableTransactions</key>
+	<false/>
+	<key>HighPriorityIO</key>
+	<true/>
+	<key>POSIXSpawnType</key>
+	<string>App</string>
 	<key>MachServices</key>
 	<dict>
-		<key>PurpleSystemEventPort</key><true/>
+		<!-- Names the real com.apple.SpringBoard job declares that UIKit's SpringBoard mode checks in.
+		     PurpleSystemAppPort is where backboardd delivers touches and other events to the system app. -->
+		<key>PurpleSystemAppPort</key>
+		<dict><key>ResetAtClose</key><true/></dict>
+		<key>com.apple.UIKit.KeyboardManagement.hosted</key><true/>
+		<key>com.apple.UIKit.statusbarserver</key><true/>
+		<key>com.apple.springboard.UIKit.migserver</key>
+		<dict><key>ResetAtClose</key><true/></dict>
+		<key>com.apple.springboard</key>
+		<dict><key>ResetAtClose</key><true/></dict>
+		<!-- GraphicsServices event port, named after the bundle id UIKit sees. -->
 		<key>com.apple.springboard.gsEvents</key><true/>
 		<key>com.liteboard.app.gsEvents</key><true/>
 		$IDSERVICE
