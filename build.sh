@@ -36,7 +36,7 @@ clang -target armv7-apple-ios9.0 -isysroot "$SDK" -fobjc-arc -Os -fapplication-e
 	-undefined dynamic_lookup -framework UIKit -framework Foundation \
 	-Wl,-e,_NSExtensionMain -Wl,-w -o "$KBX/LiteKB" LiteKB/KeyboardViewController.m
 cp LiteKB/Info.plist "$KBX/Info.plist"
-ldid -S"$ROOT/LiteKB/entitlements.plist" "$KBX/LiteKB"
+ldid -S "$KBX/LiteKB"   # no custom entitlements: re-signing installers cannot keep them
 SSTAGE=$OUT/stage-suite && mkdir -p "$SSTAGE" && cp -R "$STAGE/Payload" "$SSTAGE/Payload"
 mkdir -p "$SSTAGE/Payload/LiteBoard.app/PlugIns" && cp -R "$KBX" "$SSTAGE/Payload/LiteBoard.app/PlugIns/LiteKB.appex"
 

@@ -75,7 +75,14 @@ static const LBSetting kSettings[3] = {
 	float shown = roundf(s.value);
 	NSMutableDictionary *c = [self config];
 	c[kSettings[i].key] = @(shown / kSettings[i].div);
-	if (![c writeToFile:LK_CONFIG_PATH atomically:YES]) LBLog(@"could not write %@", LK_CONFIG_PATH);
+	if (![c writeToFile:LK_CONFIG_PATH atomically:YES]) {
+		LBLog(@"could not write %@", LK_CONFIG_PATH);
+		static BOOL warned;
+		if (!warned) {
+			warned = YES;
+			[self alert:@"Could not save" message:@"This install is sandboxed and cannot write the shared settings file, so the keyboard will keep its default look. Installing an unsigned build with AppSync avoids this." handler:nil];
+		}
+	}
 	LBSliderCell *cell = (LBSliderCell *)[self.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:i inSection:0]];
 	cell.value.text = [NSString stringWithFormat:@"%.0f%@", shown, kSettings[i].suffix];
 }
