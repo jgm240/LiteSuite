@@ -42,7 +42,7 @@ static NSString *const kCell = @"cell";
 - (void)viewDidLoad {
 	[super viewDidLoad];
 	_icons = [[NSCache alloc] init];
-	self.collectionView.backgroundColor = [UIColor blackColor]; // opaque, no wallpaper/blur: cheap to composite
+	self.collectionView.backgroundColor = LBReplaceMode ? [UIColor colorWithRed:0.05 green:0.1 blue:0.4 alpha:1] : [UIColor blackColor]; // opaque, no wallpaper/blur: cheap to composite
 	[self.collectionView registerClass:[LBCell class] forCellWithReuseIdentifier:kCell];
 	[self reload];
 }

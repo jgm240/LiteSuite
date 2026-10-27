@@ -103,6 +103,12 @@ int main(int argc, char **argv) {
 						if (cur) CFRelease(cur);
 						if (modes) CFRelease(modes);
 					}
+					if (i == 5 && LBLaunched) {
+						CFArrayRef ms = CFRunLoopCopyAllModes(CFRunLoopGetMain());
+						CFRunLoopPerformBlock(CFRunLoopGetMain(), ms, ^{ LBDumpWindowState(); });
+						CFRunLoopWakeUp(CFRunLoopGetMain());
+						if (ms) CFRelease(ms);
+					}
 					if (i == 8 && !LBLaunched) {
 						LBLog(@"UIKit never finished launching; aborting for a stack trace");
 						abort();

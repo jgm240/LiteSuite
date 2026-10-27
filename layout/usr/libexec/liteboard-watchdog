@@ -6,10 +6,10 @@
 F=/var/run/liteboard.alive
 C=/var/run/liteboard.confirmed
 
-sleep 30   # grace period for first launch
+sleep 12   # grace period for first launch
 prev=none
 stale=0
-waited=30   # seconds since the swap
+waited=12   # seconds since the swap
 while sleep 5; do
 	waited=$((waited + 5))
 	cur=$(cat "$F" 2>/dev/null || echo missing)
@@ -19,10 +19,10 @@ while sleep 5; do
 		stale=0
 	fi
 	prev=$cur
-	# Dead screen, hidden UI or no touch input: nobody confirmed the UI within 2 minutes -> revert.
+	# Dead screen, hidden UI or no touch input: nobody confirmed the UI within 45 seconds -> revert.
 	# (This also turns the boot job off, so a bad build cannot trap the device in a spinner.)
 	unconfirmed=0
-	if [ ! -f "$C" ] && [ "$waited" -ge 120 ]; then unconfirmed=1; fi
+	if [ ! -f "$C" ] && [ "$waited" -ge 45 ]; then unconfirmed=1; fi
 	if [ "$stale" -ge 3 ] || [ "$unconfirmed" = 1 ]; then
 		# crash-report folder: `idevicecrashreport -e -k <dir>` fetches these over USB
 		launchctl list > /var/mobile/Library/Logs/CrashReporter/LiteBoard-launchctl.ips 2>&1

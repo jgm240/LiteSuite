@@ -96,6 +96,7 @@ void LBBecomeSystemApp(void) {
 	// Older/alternate entry point; its signature is not known, so only call it if present.
 	void *fn = dlsym(RTLD_DEFAULT, "BKSDisplayServicesStart");
 	LBLog(@"system app: BKSDisplayServicesStart %s", fn ? "present (not called)" : "missing");
+	LBDumpWindowState();
 }
 
 BOOL LBDismissSpinnerOverlay(void) {
@@ -150,4 +151,19 @@ void LBRescueLaunch(void) {
 	}
 	LBBecomeSystemApp();
 	LBLog(@"rescue: spinner overlay dismissed=%d", LBDismissSpinnerOverlay());
+}
+
+void LBDumpWindowState(void) {
+	UIApplication *app = [UIApplication sharedApplication];
+	LBLog(@"windows: %@", app.windows);
+	for (UIWindow *w in app.windows) {
+		unsigned ctx = 0;
+		SEL cs = NSSelectorFromString(@"_contextId");
+		if ([w respondsToSelector:cs]) ctx = ((unsigned (*)(id, SEL))objc_msgSend)(w, cs);
+		LBLog(@"  window %p level=%.0f contextId=%u hidden=%d alpha=%.1f layer=%@ rootVC=%@", w, w.windowLevel, ctx, w.hidden, w.alpha, w.layer, w.rootViewController);
+	}
+	Class ca = NSClassFromString(@"CAContext");
+	SEL all = NSSelectorFromString(@"allContexts");
+	if ([ca respondsToSelector:all]) LBLog(@"CAContext allContexts: %@", ((id (*)(id, SEL))objc_msgSend)(ca, all));
+	LBLog(@"screen: %@ scale=%.1f", [UIScreen mainScreen], [UIScreen mainScreen].scale);
 }

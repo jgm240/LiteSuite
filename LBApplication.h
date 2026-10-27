@@ -24,3 +24,7 @@ void LBConfirmUsable(void);
 // (BKSSystemApplication: bootstrap, start, finishBooting). backboardd keeps its boot spinner
 // up until a system app announces it has finished booting.
 void LBBecomeSystemApp(void);
+
+// Logs what UIKit/CoreAnimation know about the windows (context id, level, layer) and screen,
+// to work out why the key window is not shown on screen.
+void LBDumpWindowState(void);

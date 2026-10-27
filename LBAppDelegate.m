@@ -18,7 +18,8 @@
 	LBLaunched = 1;
 	LBLog(@"didFinishLaunching reached");
 	self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-	self.window.backgroundColor = [UIColor blackColor];
+	self.window.backgroundColor = LBReplaceMode ? [UIColor colorWithRed:0.05 green:0.1 blue:0.4 alpha:1] : [UIColor blackColor]; // navy: recognisable if it ever reaches the screen
+	if (LBReplaceMode) self.window.windowLevel = 100000; // above any boot/overlay layer
 	self.window.rootViewController = [[LBGridController alloc] init];
 	[self.window makeKeyAndVisible];
 	LBLog(@"window: frame=%@ hidden=%d key=%d screen=%@", NSStringFromCGRect(self.window.frame), self.window.hidden, self.window.isKeyWindow, [UIScreen mainScreen]);
