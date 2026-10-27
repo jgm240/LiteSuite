@@ -174,7 +174,7 @@ static const LBSetting kSettings[3] = {
 		int rc = LBRunRoot([NSBundle mainBundle].bundlePath, @"ctl/setup.sh", @"dump");
 		dispatch_async(dispatch_get_main_queue(), ^{
 			[self alert:rc == 0 ? @"Saved" : @"Could not save"
-			    message:rc == 0 ? @"Connect the iPad to the Mac and run idevicecrashreport to read LiteBoard-system.ips."
+			    message:rc == 0 ? @"Connect the iPad to the Mac and run idevicecrashreport to read LiteBoard-system.ips and the SpringBoard and backboardd binaries."
 			                    : [NSString stringWithFormat:@"%@", LBRootLog()]
 			    handler:nil];
 		});

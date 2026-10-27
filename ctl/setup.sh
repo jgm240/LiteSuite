@@ -43,7 +43,15 @@ if [ "$1" = dump ]; then
 		done
 	} > "$OUT" 2>&1
 	chmod 644 "$OUT"
-	say "system dump written to $OUT"
+	# The binaries themselves, so they can be analysed on the Mac without SSH: the crash-report folder is
+	# readable over USB (`idevicecrashreport -e -k <dir>`).
+	CR=/var/mobile/Library/Logs/CrashReporter
+	cp /System/Library/CoreServices/SpringBoard.app/SpringBoard "$CR/LiteBoard-bin-SpringBoard.ips" 2>>"$OUT"
+	cp /usr/libexec/backboardd "$CR/LiteBoard-bin-backboardd.ips" 2>>"$OUT"
+	cp /System/Library/CoreServices/SpringBoard.app/Info.plist "$CR/LiteBoard-SpringBoard-Info.ips" 2>>"$OUT"
+	chmod 644 "$CR"/LiteBoard-bin-*.ips "$CR/LiteBoard-SpringBoard-Info.ips" 2>/dev/null
+	ls -l "$CR"/LiteBoard-bin-*.ips >> "$OUT" 2>&1
+	say "system dump and binaries written to $CR"
 	exit 0
 fi
 
