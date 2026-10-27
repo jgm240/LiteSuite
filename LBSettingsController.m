@@ -1,5 +1,6 @@
 #import "LBSettingsController.h"
 #import "LBUpdater.h"
+#import "LBRun.h"
 #import "LBPrivate.h"
 
 // Same file LiteKB reads when its keyboard appears (see LiteKB/KeyboardViewController.m).
@@ -92,7 +93,7 @@ static const LBSetting kSettings[3] = {
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return 3; }
 
 - (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s {
-	return s == 0 ? 4 : (s == 1 ? 2 : 1);
+	return s == 0 ? 4 : 2;
 }
 
 - (NSString *)tableView:(UITableView *)tv titleForHeaderInSection:(NSInteger)s {
@@ -134,7 +135,7 @@ static const LBSetting kSettings[3] = {
 		c.textLabel.text = _busy ? @"Working…" : @"Check for updates";
 		c.detailTextLabel.text = _updateStatus;
 	} else {
-		c.textLabel.text = @"Replace SpringBoard…";
+		c.textLabel.text = ip.row == 0 ? @"Replace SpringBoard…" : @"Save system info for debugging";
 	}
 	return c;
 }
@@ -146,6 +147,8 @@ static const LBSetting kSettings[3] = {
 		[tv reloadSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationNone];
 	} else if (ip.section == 1 && ip.row == 1 && !_busy) {
 		[self checkForUpdate];
+	} else if (ip.section == 2 && ip.row == 1) {
+		[self dumpSystemInfo];
 	} else if (ip.section == 2) {
 		void (^cb)(void) = self.onReplace;
 		[self dismissViewControllerAnimated:NO completion:^{ if (cb) cb(); }];
@@ -164,6 +167,18 @@ static const LBSetting kSettings[3] = {
 	UIAlertController *a = [UIAlertController alertControllerWithTitle:title message:msg preferredStyle:UIAlertControllerStyleAlert];
 	[a addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) { if (handler) handler(); }]];
 	[self presentViewController:a animated:NO completion:nil];
+}
+
+- (void)dumpSystemInfo {
+	dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+		int rc = LBRunRoot([NSBundle mainBundle].bundlePath, @"ctl/setup.sh", @"dump");
+		dispatch_async(dispatch_get_main_queue(), ^{
+			[self alert:rc == 0 ? @"Saved" : @"Could not save"
+			    message:rc == 0 ? @"Connect the iPad to the Mac and run idevicecrashreport to read LiteBoard-system.ips."
+			                    : [NSString stringWithFormat:@"%@", LBRootLog()]
+			    handler:nil];
+		});
+	});
 }
 
 - (void)checkForUpdate {

@@ -9,6 +9,7 @@ volatile int LBLaunched;
 
 extern int lbunzip_extract(const char *ipa, const char *dest);
 extern int lbinflate_file(const char *src, const char *dst);
+extern int lbents_dump(const char *path);
 
 void LBLog(NSString *format, ...) {
 	va_list ap;
@@ -39,6 +40,18 @@ int main(int argc, char **argv) {
 	if (argc == 4 && strcmp(argv[1], "--unzip") == 0) return lbunzip_extract(argv[2], argv[3]);
 	// `LiteBoard --inflate <blob> <dest>`: restores the original entitlement-signed binary (see setup.sh).
 	if (argc == 4 && strcmp(argv[1], "--inflate") == 0) return lbinflate_file(argv[2], argv[3]);
+	// `LiteBoard --entitlements <binary>` / `--plist <file>`: used by `setup.sh dump` to save what the real
+	// SpringBoard and backboardd are entitled to (and their launchd settings) for debugging.
+	if (argc == 3 && strcmp(argv[1], "--entitlements") == 0) return lbents_dump(argv[2]);
+	if (argc == 3 && strcmp(argv[1], "--plist") == 0) {
+		@autoreleasepool {
+			id plist = [NSDictionary dictionaryWithContentsOfFile:[NSString stringWithUTF8String:argv[2]]];
+			if (!plist) { fprintf(stderr, "cannot read %s\n", argv[2]); return 1; }
+			NSData *xml = [NSPropertyListSerialization dataWithPropertyList:plist format:NSPropertyListXMLFormat_v1_0 options:0 error:nil];
+			fwrite(xml.bytes, 1, xml.length, stdout);
+		}
+		return 0;
+	}
 	// `LiteBoard --bundle-id`: lets ctl/setup.sh declare the right Mach service names.
 	if (argc == 2 && strcmp(argv[1], "--bundle-id") == 0) {
 		@autoreleasepool { printf("%s\n", [NSBundle mainBundle].bundleIdentifier.UTF8String); }

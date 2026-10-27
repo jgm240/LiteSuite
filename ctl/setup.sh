@@ -23,9 +23,29 @@ say() { echo "$*"; echo "$*" >> "$SETUPLOG" 2>/dev/null; }
 say "setup.sh $1 from $APP"
 
 case "$1" in
-enable|disable|permanent|update|refresh) ;;
-*) echo "usage: setup.sh enable|disable|permanent|update|refresh"; exit 1 ;;
+enable|disable|permanent|update|refresh|dump) ;;
+*) echo "usage: setup.sh enable|disable|permanent|update|refresh|dump"; exit 1 ;;
 esac
+
+if [ "$1" = dump ]; then
+	# What the real SpringBoard/backboardd are entitled to, and their launchd job settings; fetch with
+	# `idevicecrashreport -e -k <dir>` (file lands in the crash-report folder).
+	OUT=/var/mobile/Library/Logs/CrashReporter/LiteBoard-system.ips
+	LB="$APP/LiteBoard"
+	{
+		echo "LiteBoard system dump"
+		ls -l /System/Library/CoreServices/SpringBoard.app/SpringBoard /usr/libexec/backboardd 2>&1
+		for b in /System/Library/CoreServices/SpringBoard.app/SpringBoard /usr/libexec/backboardd; do
+			echo "=== entitlements: $b"; "$LB" --entitlements "$b" 2>&1
+		done
+		for f in /System/Library/LaunchDaemons/com.apple.SpringBoard.plist /System/Library/LaunchDaemons/com.apple.backboardd.plist; do
+			echo "=== launchd plist: $f"; "$LB" --plist "$f" 2>&1
+		done
+	} > "$OUT" 2>&1
+	chmod 644 "$OUT"
+	say "system dump written to $OUT"
+	exit 0
+fi
 
 if [ "$1" = update ]; then
 	IPA=/var/tmp/liteboard-update.ipa
