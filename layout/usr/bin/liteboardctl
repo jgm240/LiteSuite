@@ -1,0 +1,47 @@
+#!/bin/sh
+# liteboardctl enable|disable|status
+#
+# Swaps SpringBoard for LiteBoard at runtime only. Never uses `launchctl -w`.
+# The optional boot job (/Library/LaunchDaemons/com.liteboard.boot.plist) re-runs
+# `enable` at each boot, but only on a booted jailbreak; /System is never modified.
+# `disable` (also run by the watchdog) leaves /Library/LiteBoard/disabled so the boot
+# job stays off until you run `enable` again.
+# Shell builtins plus rm/launchctl only (`id`, `touch`, `date` may be missing).
+
+SB=/System/Library/LaunchDaemons/com.apple.SpringBoard.plist
+D=/Library/LiteBoard/com.liteboard.daemon.plist
+W=/Library/LiteBoard/com.liteboard.watchdog.plist
+S=/Library/LiteBoard/com.liteboard.swap.plist
+
+# root can write /var/root; mobile cannot
+[ -w /var/root ] || { echo "run as root"; exit 1; }
+
+case "$1" in
+enable)
+	[ -n "$LB_BOOT" ] || rm -f /Library/LiteBoard/disabled   # a manual enable re-arms the boot job
+	rm -f /var/run/liteboard.alive
+	# Do the swap from a launchd job: killing SpringBoard can take the caller
+	# (e.g. the installer app) down with it, and the swap must still finish.
+	launchctl unload "$S" 2>/dev/null
+	launchctl load "$S"
+	;;
+_swap)
+	launchctl load "$W"      # watchdog first, so a failed swap self-heals
+	launchctl unload "$SB"
+	launchctl load "$D"
+	;;
+disable)
+	: > /Library/LiteBoard/disabled
+	launchctl unload "$S" 2>/dev/null
+	launchctl unload "$D" 2>/dev/null
+	command -v killall >/dev/null 2>&1 && killall -9 LiteBoard 2>/dev/null
+	launchctl load "$SB" 2>/dev/null
+	launchctl unload "$W" 2>/dev/null   # last: the watchdog may be the caller
+	;;
+status)
+	launchctl list | grep -E 'SpringBoard|liteboard'
+	;;
+*)
+	echo "usage: liteboardctl enable|disable|status"; exit 1
+	;;
+esac

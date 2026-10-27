@@ -1,0 +1,25 @@
+#!/bin/sh
+# Restores SpringBoard if LiteBoard never starts or stops refreshing its heartbeat.
+# LiteBoard rewrites the heartbeat file every 3s with the current time. We only compare
+# the contents between checks, so no `date` is needed: three unchanged checks (15s) = dead.
+# Before giving up it saves what it can to /var/mobile so the failure can be diagnosed.
+F=/var/run/liteboard.alive
+
+sleep 30   # grace period for first launch
+prev=none
+stale=0
+while sleep 5; do
+	cur=$(cat "$F" 2>/dev/null || echo missing)
+	if [ "$cur" = "$prev" ] || [ "$cur" = missing ]; then
+		stale=$((stale + 1))
+	else
+		stale=0
+	fi
+	prev=$cur
+	if [ "$stale" -ge 3 ]; then
+		cp /var/log/liteboard.log /var/mobile/liteboard-last.log 2>/dev/null
+		launchctl list > /var/mobile/liteboard-launchctl.txt 2>&1
+		/usr/bin/liteboardctl disable
+		exit 0
+	fi
+done

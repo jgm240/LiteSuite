@@ -1,0 +1,9 @@
+Package: com.liteboard.app
+Name: LiteBoard
+Version: 0.1.0
+Architecture: iphoneos-arm
+Description: Minimal SpringBoard replacement for 32-bit iOS 10 (experimental)
+Maintainer: johann
+Author: johann
+Section: System
+Depends: firmware (>= 10.0)

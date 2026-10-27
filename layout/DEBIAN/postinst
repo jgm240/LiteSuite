@@ -1,0 +1,5 @@
+#!/bin/sh
+chmod 755 /usr/bin/liteboardctl /usr/libexec/liteboard-watchdog
+chown root:wheel /Library/LiteBoard/*.plist
+echo "LiteBoard installed. Test it as a normal app first, then run: liteboardctl enable"
+exit 0

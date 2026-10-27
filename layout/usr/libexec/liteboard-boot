@@ -1,0 +1,7 @@
+#!/bin/sh
+# Runs at boot, but only when the jailbreak is active (it lives in /Library/LaunchDaemons).
+# SpringBoard on the rootfs is never modified: without the jailbreak this never runs.
+[ -e /Library/LiteBoard/disabled ] && exit 0   # set by the watchdog / `liteboardctl disable`
+
+sleep 20   # let stock SpringBoard and the jailbreak settle first
+LB_BOOT=1 /usr/bin/liteboardctl enable
