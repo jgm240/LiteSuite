@@ -34,6 +34,11 @@ static void onException(NSException *e) {
 int main(int argc, char **argv) {
 	// `LiteBoard --unzip <ipa> <dir>`: used by ctl/setup.sh to install updates; no UI is started.
 	if (argc == 4 && strcmp(argv[1], "--unzip") == 0) return lbunzip_extract(argv[2], argv[3]);
+	// `LiteBoard --bundle-id`: lets ctl/setup.sh declare the right Mach service names.
+	if (argc == 2 && strcmp(argv[1], "--bundle-id") == 0) {
+		@autoreleasepool { printf("%s\n", [NSBundle mainBundle].bundleIdentifier.UTF8String); }
+		return 0;
+	}
 	@autoreleasepool {
 		BOOL daemon = getenv("LITEBOARD_REPLACE") != NULL;
 		LBReplaceMode = daemon || [[NSBundle mainBundle].bundleIdentifier isEqualToString:@"com.apple.springboard"];

@@ -50,6 +50,12 @@ fi
 
 mkdir -p /Library/LiteBoard || exit 1
 cp "$D"/Library/LiteBoard/*.plist /Library/LiteBoard/ || exit 1
+# GraphicsServices checks in "<bundle id>.gsEvents" (and, as SpringBoard, PurpleSystemEventPort).
+# launchd refuses (error 1100) any name the job does not declare, so declare every candidate.
+# The real bundle id differs per installer (re-signing adds a suffix), so ask the binary.
+ID=$("$APP/LiteBoard" --bundle-id 2>/dev/null)
+IDSERVICE=""
+[ -n "$ID" ] && IDSERVICE="<key>$ID.gsEvents</key><true/>"
 # Point the daemon at this install's real binary path.
 cat > /Library/LiteBoard/com.liteboard.daemon.plist <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -74,6 +80,13 @@ cat > /Library/LiteBoard/com.liteboard.daemon.plist <<EOF
 	<dict>
 		<key>LITEBOARD_REPLACE</key>
 		<string>1</string>
+	</dict>
+	<key>MachServices</key>
+	<dict>
+		<key>PurpleSystemEventPort</key><true/>
+		<key>com.apple.springboard.gsEvents</key><true/>
+		<key>com.liteboard.app.gsEvents</key><true/>
+		$IDSERVICE
 	</dict>
 	<key>StandardErrorPath</key>
 	<string>/var/log/liteboard.log</string>
