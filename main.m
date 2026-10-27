@@ -64,17 +64,36 @@ int main(int argc, char **argv) {
 		}
 
 		if (daemon) {
-			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ LBRescueLaunch(); });
-			// Log a heartbeat from a background thread. If UIKit never reaches
-			// didFinishLaunching (blocked waiting on a service SpringBoard used to provide),
-			// abort after ~24s (before the 30s watchdog grace ends) so the crash report shows what the main thread was waiting on.
+			// Background thread, independent of the main run loop (UIKit may be running it in a
+			// private mode that neither the main dispatch queue nor default-mode timers see):
+			//  - tick 1 (3s): log the main run loop's modes, and if the app has not launched, run
+			//    LBRescueLaunch on the main thread by queueing it into every mode that exists
+			//  - writes the watchdog heartbeat once the app has launched
+			//  - tick 8 (24s, before the 30s watchdog grace ends): abort if still not launched, so
+			//    the crash report shows what the main thread was waiting on
 			dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-				for (int i = 1; i <= 10; i++) {
+				for (int i = 1;; i++) {
 					sleep(3);
-					LBLog(@"tick %d: launched=%d", i, LBLaunched);
+					if (i <= 10) LBLog(@"tick %d: launched=%d", i, LBLaunched);
+					if (i == 1) {
+						CFRunLoopRef rl = CFRunLoopGetMain();
+						CFStringRef cur = CFRunLoopCopyCurrentMode(rl);
+						CFArrayRef modes = CFRunLoopCopyAllModes(rl);
+						LBLog(@"main run loop: current mode=%@ all modes=%@", cur, modes);
+						if (!LBLaunched && modes) {
+							CFRunLoopPerformBlock(rl, modes, ^{ LBRescueLaunch(); });
+							CFRunLoopWakeUp(rl);
+						}
+						if (cur) CFRelease(cur);
+						if (modes) CFRelease(modes);
+					}
 					if (i == 8 && !LBLaunched) {
 						LBLog(@"UIKit never finished launching; aborting for a stack trace");
 						abort();
+					}
+					if (LBLaunched) {
+						NSString *now = [NSString stringWithFormat:@"%ld\n", (long)time(NULL)];
+						[now writeToFile:@"/var/run/liteboard.alive" atomically:NO encoding:NSUTF8StringEncoding error:nil];
 					}
 				}
 			});
