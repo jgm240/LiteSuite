@@ -1,5 +1,6 @@
 #import "LBPrivate.h"
 #import "LBAppDelegate.h"
+#import "LBApplication.h"
 #import <execinfo.h>
 #import <signal.h>
 
@@ -78,6 +79,8 @@ int main(int argc, char **argv) {
 			});
 		}
 		LBLog(@"main: replace=%d, calling UIApplicationMain", LBReplaceMode);
-		return UIApplicationMain(argc, argv, nil, NSStringFromClass([LBAppDelegate class]));
+		// In daemon mode UIKit takes its SpringBoard path, so use our SpringBoard-compatible application class.
+		NSString *appClass = LBReplaceMode ? NSStringFromClass([LBApplication class]) : nil;
+		return UIApplicationMain(argc, argv, appClass, NSStringFromClass([LBAppDelegate class]));
 	}
 }
