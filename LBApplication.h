@@ -19,3 +19,8 @@ BOOL LBDismissSpinnerOverlay(void);
 // Touching the screen proves the UI is usable: creates /var/run/liteboard.confirmed so the
 // watchdog keeps LiteBoard. Without it the watchdog reverts to SpringBoard after ~2 minutes.
 void LBConfirmUsable(void);
+
+// Registers this process with backboardd as the system app the way SpringBoard does
+// (BKSSystemApplication: bootstrap, start, finishBooting). backboardd keeps its boot spinner
+// up until a system app announces it has finished booting.
+void LBBecomeSystemApp(void);

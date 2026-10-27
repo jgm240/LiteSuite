@@ -60,6 +60,44 @@ void LBConfirmUsable(void) {
 	LBLog(@"confirmed usable");
 }
 
+static id sSystemApp;   // BKSSystemApplication, kept alive for the life of the process
+
+static BOOL LBCall(id target, NSString *selector) {
+	SEL sel = NSSelectorFromString(selector);
+	if (![target respondsToSelector:sel]) { LBLog(@"system app: %@ does not respond to %@", [target class], selector); return NO; }
+	@try {
+		((void (*)(id, SEL))objc_msgSend)(target, sel);
+		LBLog(@"system app: %@ returned", selector);
+		return YES;
+	} @catch (NSException *e) {
+		LBLog(@"system app: %@ threw %@", selector, e);
+		return NO;
+	}
+}
+
+void LBBecomeSystemApp(void) {
+	static BOOL once;
+	if (once) return;
+	once = YES;
+	dlopen("/System/Library/PrivateFrameworks/BackBoardServices.framework/BackBoardServices", RTLD_NOW);
+	Class cls = NSClassFromString(@"BKSSystemApplication");
+	if (!cls) { LBLog(@"system app: BKSSystemApplication missing"); return; }
+	@try {
+		// A private queue: UIKit never leaves UIInitializationRunLoopMode here, so the main queue is not serviced.
+		dispatch_queue_t q = dispatch_queue_create("com.liteboard.systemapp", DISPATCH_QUEUE_SERIAL);
+		sSystemApp = ((id (*)(id, SEL, id))objc_msgSend)([cls alloc], NSSelectorFromString(@"initWithQueue:"), q);
+		LBLog(@"system app: created %@", sSystemApp);
+		LBCall(sSystemApp, @"bootstrap");
+		LBCall(sSystemApp, @"start");
+		LBCall(sSystemApp, @"finishBooting");
+	} @catch (NSException *e) {
+		LBLog(@"system app: exception %@", e);
+	}
+	// Older/alternate entry point; its signature is not known, so only call it if present.
+	void *fn = dlsym(RTLD_DEFAULT, "BKSDisplayServicesStart");
+	LBLog(@"system app: BKSDisplayServicesStart %s", fn ? "present (not called)" : "missing");
+}
+
 BOOL LBDismissSpinnerOverlay(void) {
 	static BOOL loaded;
 	if (!loaded) {
@@ -72,7 +110,11 @@ BOOL LBDismissSpinnerOverlay(void) {
 		if (!displayClass || !overlayClass) { LBLog(@"overlay: classes missing (CADisplay=%@ overlay=%@)", displayClass, overlayClass); return NO; }
 		id display = ((id (*)(id, SEL))objc_msgSend)(displayClass, NSSelectorFromString(@"mainDisplay"));
 		id overlay = ((id (*)(id, SEL, id))objc_msgSend)(overlayClass, NSSelectorFromString(@"existingOverlayForDisplay:"), display);
-		if (!overlay) return NO;
+		if (!overlay) {
+			static BOOL said;
+			if (!said) { said = YES; LBLog(@"overlay: none for display %@", display); }
+			return NO;
+		}
 		LBLog(@"overlay: found %@, dismissing", overlay);
 		((void (*)(id, SEL))objc_msgSend)(overlay, NSSelectorFromString(@"dismiss"));
 		return YES;
@@ -106,5 +148,6 @@ void LBRescueLaunch(void) {
 	} @catch (NSException *e) {
 		LBLog(@"rescue: exception %@\n%@", e, e.callStackSymbols);
 	}
+	LBBecomeSystemApp();
 	LBLog(@"rescue: spinner overlay dismissed=%d", LBDismissSpinnerOverlay());
 }
