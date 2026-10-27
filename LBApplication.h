@@ -41,3 +41,23 @@ void LBLogScreenInfo(NSString *tag);
 // The window renders at UIScreen scale 1.0 (bounds 768x1024) on a panel that is 2048x1536 pixels, so it
 // covers only a quarter of the display. Scales the window layer up by (panel pixels / UIScreen points).
 void LBFitWindowToScreen(void);
+
+// Runs a block on the main thread in every run loop mode that exists. UIKit parks the main loop in a
+// private mode (UIInitializationRunLoopMode) that the main dispatch queue is not serviced in.
+void LBRunOnMain(void (^block)(void));
+
+// Pops UIInitializationRunLoopMode, which UIKit pushes at startup and pops when launch completes; the
+// rescue launch never completes it, so default-mode timers and the main queue never ran.
+void LBPopInitMode(void);
+
+// Logs whether the event-port Mach services we declared were really checked in, plus the app's
+// activation state (UIKit does not deliver touches to an inactive app).
+void LBProbeSystem(void);
+
+// A tap at a point given as 0..1 fractions of the panel's native (landscape) orientation. Maps it through the
+// window transform, hit-tests the window and activates the control or cell under it. Skipped once UIKit
+// delivers touches itself.
+void LBSyntheticTapAtNormalizedPoint(CGPoint p);
+
+// Sets contentScaleFactor on every view of every window so text and images render at the panel's 2x.
+void LBRescaleViews(void);

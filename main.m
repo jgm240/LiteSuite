@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
 					}
 					if (i == 4 && LBLaunched) {
 						CFArrayRef ms = CFRunLoopCopyAllModes(CFRunLoopGetMain());
-						CFRunLoopPerformBlock(CFRunLoopGetMain(), ms, ^{ LBLogScreenInfo(@"at attach"); LBAttachWindowContext(); LBFitWindowToScreen(); LBLogScreenInfo(@"after fit"); });
+						CFRunLoopPerformBlock(CFRunLoopGetMain(), ms, ^{ LBLogScreenInfo(@"at attach"); LBAttachWindowContext(); LBFitWindowToScreen(); LBLogScreenInfo(@"after fit"); LBProbeSystem(); });
 						CFRunLoopWakeUp(CFRunLoopGetMain());
 						if (ms) CFRelease(ms);
 					}
@@ -120,6 +120,12 @@ int main(int argc, char **argv) {
 						CFRunLoopPerformBlock(CFRunLoopGetMain(), ms, ^{ LBDumpWindowState(); });
 						CFRunLoopWakeUp(CFRunLoopGetMain());
 						if (ms) CFRelease(ms);
+					}
+					if (LBLaunched && i >= 5 && i <= 14) LBRunOnMain(^{ LBRescaleViews(); });
+					if (i == 6 || i == 12) {
+						CFStringRef cur = CFRunLoopCopyCurrentMode(CFRunLoopGetMain());
+						LBLog(@"tick %d: main run loop mode=%@", i, cur);
+						if (cur) CFRelease(cur);
 					}
 					if (i == 8 && !LBLaunched) {
 						LBLog(@"UIKit never finished launching; aborting for a stack trace");

@@ -4,6 +4,8 @@
 #import <objc/message.h>
 #import <dlfcn.h>
 
+static BOOL sUIKitTouchSeen;
+
 @implementation LBApplication {
 	NSHashTable *_orientationObservers;
 	NSMutableSet<NSString *> *_seen;
@@ -23,7 +25,7 @@
 - (void)sendEvent:(UIEvent *)event {
 	if (event.type == UIEventTypeTouches) {
 		static BOOL first = YES;
-		if (first) { first = NO; LBLog(@"first touch event received"); }
+		if (first) { first = NO; sUIKitTouchSeen = YES; LBLog(@"first touch event received (UIKit path)"); }
 		LBConfirmUsable();
 	}
 	[super sendEvent:event];
@@ -151,6 +153,7 @@ void LBRescueLaunch(void) {
 	}
 	LBBecomeSystemApp();
 	LBLog(@"rescue: spinner overlay dismissed=%d", LBDismissSpinnerOverlay());
+	LBPopInitMode();
 }
 
 void LBDumpWindowState(void) {
@@ -173,6 +176,13 @@ extern CGSize GSMainScreenPointSize(void);
 extern CGFloat GSMainScreenScaleFactor(void);
 extern int GSMainScreenOrientation(void);
 extern CGAffineTransform GSMainScreenWindowTransform(void);
+
+extern void GSEventPopRunLoopMode(CFStringRef mode);
+extern kern_return_t bootstrap_look_up(mach_port_t bp, const char *name, mach_port_t *sp);
+extern mach_port_t bootstrap_port;
+
+static CGAffineTransform sFit = {1, 0, 0, 1, 0, 0};   // portrait points -> native panel pixels
+static CGSize sPanel;                                  // native (landscape) panel size in pixels
 
 static id sManualContext;   // keeps a hand-made CAContext alive
 
@@ -255,15 +265,91 @@ void LBFitWindowToScreen(void) {
 	UIWindow *w = [UIApplication sharedApplication].windows.firstObject;
 	UIScreen *sc = [UIScreen mainScreen];
 	if (!w) return;
-	CGSize mode = sc.currentMode.size;
+	// GraphicsServices has the real geometry: portrait pixels, scale 2, and a window transform that rotates
+	// portrait into the panel's native landscape framebuffer. UIScreen reports scale 1.0 in this mode.
+	CGSize px = GSMainScreenPixelSize();
+	CGAffineTransform rot = GSMainScreenWindowTransform();
 	CGRect b = sc.bounds;
-	CGFloat longPx = MAX(mode.width, mode.height), longPt = MAX(b.size.width, b.size.height);
-	CGFloat f = longPt > 0 ? longPx / longPt : 1;
-	LBLog(@"fit: panel %.0fx%.0f px, UIScreen %.0fx%.0f pt, scale %.2f -> factor %.2f", mode.width, mode.height, b.size.width, b.size.height, sc.scale, f);
-	if (f > 1.01 && sc.scale < 1.01) {
-		w.layer.anchorPoint = CGPointMake(0, 0);
-		w.layer.position = CGPointMake(0, 0);
-		w.layer.affineTransform = CGAffineTransformMakeScale(f, f);
-		LBLog(@"fit: window layer scaled by %.2f, frame now %@", f, NSStringFromCGRect(w.frame));
+	CGFloat f = b.size.width > 0 ? px.width / b.size.width : 1;
+	CGAffineTransform t = CGAffineTransformConcat(CGAffineTransformMakeScale(f, f), rot);
+	CGRect r = CGRectApplyAffineTransform(CGRectMake(0, 0, b.size.width, b.size.height), t);
+	t.tx -= r.origin.x;   // bring the rotated rect back into the positive quadrant
+	t.ty -= r.origin.y;
+	w.layer.anchorPoint = CGPointMake(0, 0);
+	w.layer.position = CGPointMake(0, 0);
+	w.layer.affineTransform = t;
+	sFit = t;
+	sPanel = CGSizeMake(MAX(px.width, px.height), MIN(px.width, px.height));
+	LBLog(@"fit: scale %.2f, GS window transform %@ -> layer transform %@, panel %.0fx%.0f", f, NSStringFromCGAffineTransform(rot), NSStringFromCGAffineTransform(t), sPanel.width, sPanel.height);
+	LBRescaleViews();
+}
+
+void LBRunOnMain(void (^block)(void)) {
+	CFArrayRef modes = CFRunLoopCopyAllModes(CFRunLoopGetMain());
+	CFRunLoopPerformBlock(CFRunLoopGetMain(), modes, block);
+	CFRunLoopWakeUp(CFRunLoopGetMain());
+	if (modes) CFRelease(modes);
+}
+
+void LBPopInitMode(void) {
+	GSEventPopRunLoopMode(CFSTR("UIInitializationRunLoopMode"));
+	LBLog(@"popped UIInitializationRunLoopMode");
+}
+
+void LBProbeSystem(void) {
+	const char *names[] = { "PurpleSystemAppPort", "com.apple.springboard.gsEvents", "com.apple.UIKit.statusbarserver",
+	                        "com.apple.UIKit.KeyboardManagement.hosted", "com.apple.springboard.UIKit.migserver", "com.apple.springboard", NULL };
+	for (int i = 0; names[i]; i++) {
+		mach_port_t p = MACH_PORT_NULL;
+		kern_return_t kr = bootstrap_look_up(bootstrap_port, names[i], &p);
+		LBLog(@"probe: %s -> kr=%d port=%u", names[i], kr, p);
+	}
+	UIApplication *app = [UIApplication sharedApplication];
+	SEL act = NSSelectorFromString(@"_isActivated"), acting = NSSelectorFromString(@"_isActivating");
+	BOOL a = [app respondsToSelector:act] ? ((BOOL (*)(id, SEL))objc_msgSend)(app, act) : NO;
+	BOOL b = [app respondsToSelector:acting] ? ((BOOL (*)(id, SEL))objc_msgSend)(app, acting) : NO;
+	LBLog(@"probe: applicationState=%ld _isActivated=%d _isActivating=%d", (long)app.applicationState, a, b);
+}
+
+static void LBRescale(UIView *v, CGFloat s) {
+	if (v.contentScaleFactor != s) v.contentScaleFactor = s;
+	for (UIView *sub in v.subviews) LBRescale(sub, s);
+}
+
+void LBRescaleViews(void) {
+	CGFloat s = GSMainScreenScaleFactor();
+	if (s < 1.01) return;
+	for (UIWindow *w in [UIApplication sharedApplication].windows) LBRescale(w, s);
+}
+
+void LBSyntheticTapAtNormalizedPoint(CGPoint n) {
+	if (sUIKitTouchSeen) return;   // UIKit is delivering touches itself
+	UIWindow *w = [UIApplication sharedApplication].windows.firstObject;
+	if (!w || sPanel.width <= 0) return;
+	CGPoint panel = CGPointMake(n.x * sPanel.width, n.y * sPanel.height);
+	CGPoint pt = CGPointApplyAffineTransform(panel, CGAffineTransformInvert(sFit));
+	UIView *hit = [w hitTest:pt withEvent:nil];
+	LBLog(@"tap: norm=(%.3f,%.3f) panel=(%.0f,%.0f) point=(%.0f,%.0f) hit=%@", n.x, n.y, panel.x, panel.y, pt.x, pt.y, hit);
+	LBConfirmUsable();
+	for (UIView *v = hit; v; v = v.superview) {
+		if ([v isKindOfClass:[UIControl class]]) { [(UIControl *)v sendActionsForControlEvents:UIControlEventTouchUpInside]; return; }
+		if ([v isKindOfClass:[UICollectionViewCell class]]) {
+			UIView *p = v.superview;
+			while (p && ![p isKindOfClass:[UICollectionView class]]) p = p.superview;
+			UICollectionView *cv = (UICollectionView *)p;
+			NSIndexPath *ip = [cv indexPathForCell:(UICollectionViewCell *)v];
+			if (ip && [cv.delegate respondsToSelector:@selector(collectionView:didSelectItemAtIndexPath:)])
+				[cv.delegate collectionView:cv didSelectItemAtIndexPath:ip];
+			return;
+		}
+		if ([v isKindOfClass:[UITableViewCell class]]) {
+			UIView *p = v.superview;
+			while (p && ![p isKindOfClass:[UITableView class]]) p = p.superview;
+			UITableView *tv = (UITableView *)p;
+			NSIndexPath *ip = [tv indexPathForCell:(UITableViewCell *)v];
+			if (ip && [tv.delegate respondsToSelector:@selector(tableView:didSelectRowAtIndexPath:)])
+				[tv.delegate tableView:tv didSelectRowAtIndexPath:ip];
+			return;
+		}
 	}
 }

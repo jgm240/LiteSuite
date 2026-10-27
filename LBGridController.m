@@ -1,6 +1,7 @@
 #import "LBGridController.h"
 #import "LBLauncher.h"
 #import "LBPrivate.h"
+#import "LBApplication.h"
 
 static NSString *const kCell = @"cell";
 
@@ -8,6 +9,37 @@ static NSString *const kCell = @"cell";
 @property (nonatomic, strong) UIImageView *icon;
 @property (nonatomic, strong) UILabel *label;
 @end
+
+// Icon straight from the app bundle's PNGs, for when the system icon service has nothing (it did not in
+// the daemon-launched process). Picks the largest icon file named in Info.plist or called AppIcon*.
+static UIImage *LBIconFromBundle(NSString *bid) {
+	LSApplicationProxy *p = [LSApplicationProxy applicationProxyForIdentifier:bid];
+	NSString *dir = p.bundleURL.path;
+	if (!dir) return nil;
+	NSDictionary *info = [NSDictionary dictionaryWithContentsOfFile:[dir stringByAppendingPathComponent:@"Info.plist"]];
+	NSMutableArray *names = [NSMutableArray array];
+	for (NSString *k in @[@"CFBundleIcons~ipad", @"CFBundleIcons"]) {
+		NSArray *files = info[k][@"CFBundlePrimaryIcon"][@"CFBundleIconFiles"];
+		if ([files isKindOfClass:[NSArray class]]) [names addObjectsFromArray:files];
+	}
+	for (NSString *k in @[@"CFBundleIconFiles", @"CFBundleIconFile"]) {
+		id v = info[k];
+		if ([v isKindOfClass:[NSArray class]]) [names addObjectsFromArray:v];
+		else if ([v isKindOfClass:[NSString class]]) [names addObject:v];
+	}
+	UIImage *best = nil;
+	CGFloat bestArea = 0;
+	for (NSString *f in [[NSFileManager defaultManager] contentsOfDirectoryAtPath:dir error:nil]) {
+		if (![f.pathExtension.lowercaseString isEqualToString:@"png"]) continue;
+		BOOL match = [f hasPrefix:@"AppIcon"] || [f hasPrefix:@"Icon"];
+		for (NSString *n in names) if ([f hasPrefix:n.stringByDeletingPathExtension]) { match = YES; break; }
+		if (!match) continue;
+		UIImage *im = [UIImage imageWithContentsOfFile:[dir stringByAppendingPathComponent:f]];
+		CGFloat area = im.size.width * im.size.height * im.scale * im.scale;
+		if (im && area > bestArea) { best = im; bestArea = area; }
+	}
+	return best;
+}
 
 @implementation LBCell
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -74,9 +106,10 @@ static NSString *const kCell = @"cell";
 		NSString *bid = app[@"id"];
 		dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
 			UIImage *i = [UIImage _applicationIconImageForBundleIdentifier:bid format:2 scale:[UIScreen mainScreen].scale];
-			if (!i) return;
-			[self->_icons setObject:i forKey:bid];
-			dispatch_async(dispatch_get_main_queue(), ^{
+				if (!i) i = LBIconFromBundle(bid);
+				if (!i) return;
+				[self->_icons setObject:i forKey:bid];
+				LBRunOnMain(^{
 				if ([cv.indexPathsForVisibleItems containsObject:ip]) [(LBCell *)[cv cellForItemAtIndexPath:ip] icon].image = i;
 			});
 		});
