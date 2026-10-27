@@ -34,3 +34,10 @@ void LBDumpWindowState(void);
 // -[UIWindow _createContextAttached:], and if the window still has no context creates a CAContext by hand
 // and hosts the window's layer in it. Also logs the context-related methods UIKit/CoreAnimation offer.
 void LBAttachWindowContext(void);
+
+// Logs GraphicsServices' and UIScreen's idea of the screen (pixel/point size, scale, orientation).
+void LBLogScreenInfo(NSString *tag);
+
+// The window renders at UIScreen scale 1.0 (bounds 768x1024) on a panel that is 2048x1536 pixels, so it
+// covers only a quarter of the display. Scales the window layer up by (panel pixels / UIScreen points).
+void LBFitWindowToScreen(void);

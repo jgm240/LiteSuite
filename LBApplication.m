@@ -168,6 +168,12 @@ void LBDumpWindowState(void) {
 	LBLog(@"screen: %@ scale=%.1f", [UIScreen mainScreen], [UIScreen mainScreen].scale);
 }
 
+extern CGSize GSMainScreenPixelSize(void);
+extern CGSize GSMainScreenPointSize(void);
+extern CGFloat GSMainScreenScaleFactor(void);
+extern int GSMainScreenOrientation(void);
+extern CGAffineTransform GSMainScreenWindowTransform(void);
+
 static id sManualContext;   // keeps a hand-made CAContext alive
 
 static void LBLogMethods(Class cls, BOOL meta, NSArray *keys, NSString *tag, int limit) {
@@ -232,5 +238,32 @@ void LBAttachWindowContext(void) {
 		LBLog(@"attach: manual CAContext %@ contextId=%@ level=%@", ctx, [ctx valueForKey:@"contextId"], [ctx valueForKey:@"level"]);
 	} @catch (NSException *e) {
 		LBLog(@"attach: manual CAContext threw %@", e);
+	}
+}
+
+void LBLogScreenInfo(NSString *tag) {
+	CGSize px = GSMainScreenPixelSize(), pt = GSMainScreenPointSize();
+	CGAffineTransform wt = GSMainScreenWindowTransform();
+	LBLog(@"screen[%@]: GS pixel=%.0fx%.0f point=%.0fx%.0f scale=%.2f orientation=%d windowTransform=%@", tag, px.width, px.height, pt.width, pt.height, GSMainScreenScaleFactor(), GSMainScreenOrientation(), NSStringFromCGAffineTransform(wt));
+	// Touching UIScreen before UIKit has launched would create it with default values; GS getters only until then.
+	if (!LBLaunched || ![NSThread isMainThread]) return;
+	UIScreen *sc = [UIScreen mainScreen];
+	LBLog(@"screen[%@]: UIScreen bounds=%@ nativeBounds=%@ scale=%.2f nativeScale=%.2f mode=%@", tag, NSStringFromCGRect(sc.bounds), NSStringFromCGRect(sc.nativeBounds), sc.scale, sc.nativeScale, sc.currentMode);
+}
+
+void LBFitWindowToScreen(void) {
+	UIWindow *w = [UIApplication sharedApplication].windows.firstObject;
+	UIScreen *sc = [UIScreen mainScreen];
+	if (!w) return;
+	CGSize mode = sc.currentMode.size;
+	CGRect b = sc.bounds;
+	CGFloat longPx = MAX(mode.width, mode.height), longPt = MAX(b.size.width, b.size.height);
+	CGFloat f = longPt > 0 ? longPx / longPt : 1;
+	LBLog(@"fit: panel %.0fx%.0f px, UIScreen %.0fx%.0f pt, scale %.2f -> factor %.2f", mode.width, mode.height, b.size.width, b.size.height, sc.scale, f);
+	if (f > 1.01 && sc.scale < 1.01) {
+		w.layer.anchorPoint = CGPointMake(0, 0);
+		w.layer.position = CGPointMake(0, 0);
+		w.layer.affineTransform = CGAffineTransformMakeScale(f, f);
+		LBLog(@"fit: window layer scaled by %.2f, frame now %@", f, NSStringFromCGRect(w.frame));
 	}
 }

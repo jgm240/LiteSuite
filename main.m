@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
 					}
 					if (i == 4 && LBLaunched) {
 						CFArrayRef ms = CFRunLoopCopyAllModes(CFRunLoopGetMain());
-						CFRunLoopPerformBlock(CFRunLoopGetMain(), ms, ^{ LBAttachWindowContext(); });
+						CFRunLoopPerformBlock(CFRunLoopGetMain(), ms, ^{ LBLogScreenInfo(@"at attach"); LBAttachWindowContext(); LBFitWindowToScreen(); LBLogScreenInfo(@"after fit"); });
 						CFRunLoopWakeUp(CFRunLoopGetMain());
 						if (ms) CFRelease(ms);
 					}
@@ -146,6 +146,7 @@ int main(int argc, char **argv) {
 			LBLog(@"main bundle unreadable (path=%@); exiting instead of crashing in UIKit", [NSBundle mainBundle].bundlePath);
 			_exit(78);
 		}
+		if (daemon) LBLogScreenInfo(@"before UIApplicationMain");
 		LBLog(@"main: version %@, replace=%d, path=%@, calling UIApplicationMain",
 		      [NSBundle mainBundle].infoDictionary[@"CFBundleShortVersionString"], LBReplaceMode, [NSBundle mainBundle].bundlePath);
 		// In daemon mode UIKit takes its SpringBoard path, so use our SpringBoard-compatible application class.
