@@ -4,6 +4,7 @@
 #import "LBHome.h"
 #import "LBRun.h"
 #import "LBSettingsController.h"
+#import "LBApplication.h"
 #import "LBPrivate.h"
 
 #define LB_HEARTBEAT_PATH "/var/run/liteboard.alive"
@@ -26,7 +27,7 @@
 		// The watchdog restores SpringBoard if this stops being refreshed.
 		[self beat];
 		_heartbeat = [NSTimer scheduledTimerWithTimeInterval:3 target:self selector:@selector(beat) userInfo:nil repeats:YES];
-		LBHomeStartListening(^{ [LBLauncher goHome]; });
+		LBHomeStartListening(^{ LBConfirmUsable(); [LBLauncher goHome]; });
 	} else if (![[NSUserDefaults standardUserDefaults] boolForKey:@"promptShown"]) {
 		// Once per install; the gear button (Settings > SpringBoard) offers it again.
 		[[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"promptShown"];

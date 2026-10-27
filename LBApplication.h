@@ -11,3 +11,11 @@
 // app has not launched a few seconds after UIApplicationMain, log which launch-related methods
 // UIKit's application class has, then call the delegate's launch method ourselves.
 void LBRescueLaunch(void);
+
+// backboardd covers the screen with a progress spinner while no SpringBoard is running. Looks up
+// that render overlay for the main display and dismisses it. Returns YES once it was dismissed.
+BOOL LBDismissSpinnerOverlay(void);
+
+// Touching the screen proves the UI is usable: creates /var/run/liteboard.confirmed so the
+// watchdog keeps LiteBoard. Without it the watchdog reverts to SpringBoard after ~2 minutes.
+void LBConfirmUsable(void);

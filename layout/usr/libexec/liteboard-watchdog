@@ -4,11 +4,14 @@
 # the contents between checks, so no `date` is needed: three unchanged checks (15s) = dead.
 # Before giving up it saves a launchctl snapshot next to the crash reports (see below).
 F=/var/run/liteboard.alive
+C=/var/run/liteboard.confirmed
 
 sleep 30   # grace period for first launch
 prev=none
 stale=0
+waited=30   # seconds since the swap
 while sleep 5; do
+	waited=$((waited + 5))
 	cur=$(cat "$F" 2>/dev/null || echo missing)
 	if [ "$cur" = "$prev" ] || [ "$cur" = missing ]; then
 		stale=$((stale + 1))
@@ -16,7 +19,11 @@ while sleep 5; do
 		stale=0
 	fi
 	prev=$cur
-	if [ "$stale" -ge 3 ]; then
+	# Dead screen, hidden UI or no touch input: nobody confirmed the UI within 2 minutes -> revert.
+	# (This also turns the boot job off, so a bad build cannot trap the device in a spinner.)
+	unconfirmed=0
+	if [ ! -f "$C" ] && [ "$waited" -ge 120 ]; then unconfirmed=1; fi
+	if [ "$stale" -ge 3 ] || [ "$unconfirmed" = 1 ]; then
 		# crash-report folder: `idevicecrashreport -e -k <dir>` fetches these over USB
 		launchctl list > /var/mobile/Library/Logs/CrashReporter/LiteBoard-launchctl.ips 2>&1
 		/usr/bin/liteboardctl disable

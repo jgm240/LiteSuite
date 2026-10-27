@@ -1,6 +1,8 @@
 #import "LBApplication.h"
 #import "LBPrivate.h"
 #import <objc/runtime.h>
+#import <objc/message.h>
+#import <dlfcn.h>
 
 @implementation LBApplication {
 	NSHashTable *_orientationObservers;
@@ -15,6 +17,16 @@
 
 - (void)removeActiveOrientationObserver:(id)observer {
 	[_orientationObservers removeObject:observer];
+}
+
+// Any touch means the display and the event path both work.
+- (void)sendEvent:(UIEvent *)event {
+	if (event.type == UIEventTypeTouches) {
+		static BOOL first = YES;
+		if (first) { first = NO; LBLog(@"first touch event received"); }
+		LBConfirmUsable();
+	}
+	[super sendEvent:event];
 }
 
 // Everything else UIKit asks of "SpringBoard": log it once, return nil/0/NO.
@@ -40,6 +52,36 @@
 
 @end
 
+void LBConfirmUsable(void) {
+	static BOOL done;
+	if (done) return;
+	done = YES;
+	[@"1\n" writeToFile:@"/var/run/liteboard.confirmed" atomically:NO encoding:NSUTF8StringEncoding error:nil];
+	LBLog(@"confirmed usable");
+}
+
+BOOL LBDismissSpinnerOverlay(void) {
+	static BOOL loaded;
+	if (!loaded) {
+		loaded = YES;
+		dlopen("/System/Library/PrivateFrameworks/BackBoardServices.framework/BackBoardServices", RTLD_NOW);
+	}
+	@try {
+		Class displayClass = NSClassFromString(@"CADisplay");
+		Class overlayClass = NSClassFromString(@"BKSDisplayRenderOverlay");
+		if (!displayClass || !overlayClass) { LBLog(@"overlay: classes missing (CADisplay=%@ overlay=%@)", displayClass, overlayClass); return NO; }
+		id display = ((id (*)(id, SEL))objc_msgSend)(displayClass, NSSelectorFromString(@"mainDisplay"));
+		id overlay = ((id (*)(id, SEL, id))objc_msgSend)(overlayClass, NSSelectorFromString(@"existingOverlayForDisplay:"), display);
+		if (!overlay) return NO;
+		LBLog(@"overlay: found %@, dismissing", overlay);
+		((void (*)(id, SEL))objc_msgSend)(overlay, NSSelectorFromString(@"dismiss"));
+		return YES;
+	} @catch (NSException *e) {
+		LBLog(@"overlay: exception %@", e);
+		return NO;
+	}
+}
+
 void LBRescueLaunch(void) {
 	if (LBLaunched) return;
 	UIApplication *app = [UIApplication sharedApplication];
@@ -64,4 +106,5 @@ void LBRescueLaunch(void) {
 	} @catch (NSException *e) {
 		LBLog(@"rescue: exception %@\n%@", e, e.callStackSymbols);
 	}
+	LBLog(@"rescue: spinner overlay dismissed=%d", LBDismissSpinnerOverlay());
 }

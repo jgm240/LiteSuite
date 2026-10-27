@@ -19,7 +19,7 @@ S=/Library/LiteBoard/com.liteboard.swap.plist
 case "$1" in
 enable)
 	[ -n "$LB_BOOT" ] || rm -f /Library/LiteBoard/disabled   # a manual enable re-arms the boot job
-	rm -f /var/run/liteboard.alive
+	rm -f /var/run/liteboard.alive /var/run/liteboard.confirmed
 	# Do the swap from a launchd job: killing SpringBoard can take the caller
 	# (e.g. the installer app) down with it, and the swap must still finish.
 	launchctl unload "$S" 2>/dev/null

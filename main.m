@@ -91,6 +91,16 @@ int main(int argc, char **argv) {
 						LBLog(@"UIKit never finished launching; aborting for a stack trace");
 						abort();
 					}
+					if (LBLaunched && i >= 2 && i <= 40) {
+						static BOOL gone;
+						if (!gone) {
+							// UIKit/backboardd objects: do the lookup on the main thread's loop
+							CFArrayRef ms = CFRunLoopCopyAllModes(CFRunLoopGetMain());
+							CFRunLoopPerformBlock(CFRunLoopGetMain(), ms, ^{ gone = LBDismissSpinnerOverlay(); });
+							CFRunLoopWakeUp(CFRunLoopGetMain());
+							if (ms) CFRelease(ms);
+						}
+					}
 					if (LBLaunched) {
 						NSString *now = [NSString stringWithFormat:@"%ld\n", (long)time(NULL)];
 						[now writeToFile:@"/var/run/liteboard.alive" atomically:NO encoding:NSUTF8StringEncoding error:nil];

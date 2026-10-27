@@ -39,7 +39,7 @@ launchctl list | grep -q com.apple.SpringBoard || launchctl load "$SB"
 launchctl unload "$L/com.liteboard.watchdog.plist" 2>/dev/null
 
 rm -rf "$L" /usr/bin/liteboardctl /usr/libexec/liteboard-watchdog \
-	/var/run/liteboard.alive /var/log/liteboard.log /var/tmp/liteboard-update.ipa \
+	/var/run/liteboard.alive /var/run/liteboard.confirmed /var/log/liteboard.log /var/tmp/liteboard-update.ipa \
 	/var/mobile/Library/Preferences/com.liteboard.litekb.plist \
 	/var/mobile/liteboard-last.log /var/mobile/liteboard-launchctl.txt \
 	/var/mobile/Library/Logs/CrashReporter/LiteBoard-stderr.ips /var/mobile/Library/Logs/CrashReporter/LiteBoard-launchctl.ips
