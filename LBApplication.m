@@ -167,3 +167,70 @@ void LBDumpWindowState(void) {
 	if ([ca respondsToSelector:all]) LBLog(@"CAContext allContexts: %@", ((id (*)(id, SEL))objc_msgSend)(ca, all));
 	LBLog(@"screen: %@ scale=%.1f", [UIScreen mainScreen], [UIScreen mainScreen].scale);
 }
+
+static id sManualContext;   // keeps a hand-made CAContext alive
+
+static void LBLogMethods(Class cls, BOOL meta, NSArray *keys, NSString *tag, int limit) {
+	Class target = meta ? object_getClass(cls) : cls;
+	unsigned n = 0;
+	Method *ms = class_copyMethodList(target, &n);
+	int shown = 0;
+	for (unsigned i = 0; i < n && shown < limit; i++) {
+		NSString *name = NSStringFromSelector(method_getName(ms[i]));
+		for (NSString *k in keys) {
+			if ([name rangeOfString:k options:NSCaseInsensitiveSearch].location != NSNotFound) {
+				LBLog(@"  %@ %c%@", tag, meta ? '+' : '-', name);
+				shown++;
+				break;
+			}
+		}
+	}
+	free(ms);
+}
+
+void LBAttachWindowContext(void) {
+	static BOOL once;
+	if (once) return;
+	once = YES;
+	UIApplication *app = [UIApplication sharedApplication];
+	UIWindow *w = app.windows.firstObject;
+	if (!w) { LBLog(@"attach: no window"); return; }
+
+	LBLogMethods([UIWindow class], NO, @[@"context"], @"UIWindow", 40);
+	LBLogMethods([UIScreen class], NO, @[@"context", @"binder", @"display"], @"UIScreen", 30);
+	Class ca = NSClassFromString(@"CAContext");
+	LBLogMethods(ca, YES, @[@"context", @"display"], @"CAContext", 20);
+	LBLogMethods(ca, NO, @[@"layer", @"level", @"display", @"contextId"], @"CAContext", 20);
+	Class binder = NSClassFromString(@"_UIContextBinder");
+	LBLog(@"attach: _UIContextBinder=%@", binder);
+	if (binder) LBLogMethods(binder, NO, @[@""], @"_UIContextBinder", 40);
+
+	SEL cid = NSSelectorFromString(@"_contextId");
+	unsigned (^ctxId)(void) = ^unsigned {
+		return [w respondsToSelector:cid] ? ((unsigned (*)(id, SEL))objc_msgSend)(w, cid) : 0u;
+	};
+	LBLog(@"attach: contextId before = %u", ctxId());
+
+	// A. UIKit's own
+	SEL create = NSSelectorFromString(@"_createContextAttached:");
+	if ([w respondsToSelector:create]) {
+		@try { ((void (*)(id, SEL, BOOL))objc_msgSend)(w, create, YES); }
+		@catch (NSException *e) { LBLog(@"attach: _createContextAttached: threw %@", e); }
+		LBLog(@"attach: after _createContextAttached: contextId = %u", ctxId());
+	} else {
+		LBLog(@"attach: UIWindow has no _createContextAttached:");
+	}
+	if (ctxId() != 0) return;
+
+	// B. by hand: a remote CAContext hosting the window's layer. Needs com.apple.QuartzCore.displayable-context.
+	@try {
+		id ctx = ((id (*)(id, SEL, id))objc_msgSend)(ca, NSSelectorFromString(@"remoteContextWithOptions:"), @{});
+		if (!ctx) { LBLog(@"attach: remoteContextWithOptions: returned nil"); return; }
+		[ctx setValue:w.layer forKey:@"layer"];
+		[ctx setValue:@(100000) forKey:@"level"];
+		sManualContext = ctx;
+		LBLog(@"attach: manual CAContext %@ contextId=%@ level=%@", ctx, [ctx valueForKey:@"contextId"], [ctx valueForKey:@"level"]);
+	} @catch (NSException *e) {
+		LBLog(@"attach: manual CAContext threw %@", e);
+	}
+}

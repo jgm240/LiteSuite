@@ -28,3 +28,9 @@ void LBBecomeSystemApp(void);
 // Logs what UIKit/CoreAnimation know about the windows (context id, level, layer) and screen,
 // to work out why the key window is not shown on screen.
 void LBDumpWindowState(void);
+
+// Runs after launch in daemon mode. The rescue launch skips UIKit's scene setup, which is what normally
+// binds each UIWindow to a CAContext on the display (the logs show contextId=0). Tries UIKit's own
+// -[UIWindow _createContextAttached:], and if the window still has no context creates a CAContext by hand
+// and hosts the window's layer in it. Also logs the context-related methods UIKit/CoreAnimation offer.
+void LBAttachWindowContext(void);
