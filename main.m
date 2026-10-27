@@ -108,7 +108,12 @@ int main(int argc, char **argv) {
 				}
 			});
 		}
-		LBLog(@"main: replace=%d, calling UIApplicationMain", LBReplaceMode);
+		if (daemon && [NSBundle mainBundle].bundleIdentifier.length == 0) {
+			LBLog(@"main bundle unreadable (path=%@); exiting instead of crashing in UIKit", [NSBundle mainBundle].bundlePath);
+			_exit(78);
+		}
+		LBLog(@"main: version %@, replace=%d, path=%@, calling UIApplicationMain",
+		      [NSBundle mainBundle].infoDictionary[@"CFBundleShortVersionString"], LBReplaceMode, [NSBundle mainBundle].bundlePath);
 		// In daemon mode UIKit takes its SpringBoard path, so use our SpringBoard-compatible application class.
 		NSString *appClass = LBReplaceMode ? NSStringFromClass([LBApplication class]) : nil;
 		return UIApplicationMain(argc, argv, appClass, NSStringFromClass([LBAppDelegate class]));

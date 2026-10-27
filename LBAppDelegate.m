@@ -5,6 +5,7 @@
 #import "LBRun.h"
 #import "LBSettingsController.h"
 #import "LBApplication.h"
+#import "LBUpdater.h"
 #import "LBPrivate.h"
 
 #define LB_HEARTBEAT_PATH "/var/run/liteboard.alive"
@@ -28,9 +29,10 @@
 		[self beat];
 		_heartbeat = [NSTimer scheduledTimerWithTimeInterval:3 target:self selector:@selector(beat) userInfo:nil repeats:YES];
 		LBHomeStartListening(^{ LBConfirmUsable(); [LBLauncher goHome]; });
-	} else if (![[NSUserDefaults standardUserDefaults] boolForKey:@"promptShown"]) {
-		// Once per install; the gear button (Settings > SpringBoard) offers it again.
-		[[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"promptShown"];
+	} else if (![[[NSUserDefaults standardUserDefaults] stringForKey:@"promptShownFor"] isEqualToString:[LBUpdater currentVersion]]) {
+		// Once per version (a reinstall keeps the data, and the daemon's copy must be refreshed
+		// by running setup again); the gear button (Settings > SpringBoard) offers it any time.
+		[[NSUserDefaults standardUserDefaults] setObject:[LBUpdater currentVersion] forKey:@"promptShownFor"];
 		dispatch_async(dispatch_get_main_queue(), ^{ [self offerReplace]; });
 	}
 	return YES;

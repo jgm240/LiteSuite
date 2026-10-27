@@ -17,6 +17,11 @@ APP=${D%/*}
 # root can write /var/root; mobile cannot
 [ -w /var/root ] || { echo "run as root"; exit 1; }
 
+# Progress goes to the screen/app and to a file next to the crash reports (fetchable over USB).
+SETUPLOG=/var/mobile/Library/Logs/CrashReporter/LiteBoard-setup.ips
+say() { echo "$*"; echo "$*" >> "$SETUPLOG" 2>/dev/null; }
+say "setup.sh $1 from $APP"
+
 case "$1" in
 enable|disable|permanent|update|refresh) ;;
 *) echo "usage: setup.sh enable|disable|permanent|update|refresh"; exit 1 ;;
@@ -53,7 +58,16 @@ cp "$D"/Library/LiteBoard/*.plist /Library/LiteBoard/ || exit 1
 # GraphicsServices checks in "<bundle id>.gsEvents" (and, as SpringBoard, PurpleSystemEventPort).
 # launchd refuses (error 1100) any name the job does not declare, so declare every candidate.
 # The real bundle id differs per installer (re-signing adds a suffix), so ask the binary.
-ID=$("$APP/LiteBoard" --bundle-id 2>/dev/null)
+# The daemon runs from a copy at a fixed path: reinstalling the IPA gives the app a new container
+# path and moves the old one to installd's "Dead" folder, which left the daemon pointing at nothing.
+STABLE=/Library/LiteBoard/LiteBoard.app
+rm -rf "$STABLE.new"
+cp -R "$APP" "$STABLE.new" || { say "copy of the app failed"; exit 1; }
+rm -rf "$STABLE" && mv "$STABLE.new" "$STABLE" || { say "could not place $STABLE"; exit 1; }
+chmod 755 "$STABLE/LiteBoard"
+ID=$("$STABLE/LiteBoard" --bundle-id 2>/dev/null)
+[ -n "$ID" ] || { say "the copied LiteBoard cannot read its own bundle id; not swapping SpringBoard"; exit 1; }
+say "stable copy ok, bundle id $ID"
 IDSERVICE=""
 [ -n "$ID" ] && IDSERVICE="<key>$ID.gsEvents</key><true/>"
 # Point the daemon at this install's real binary path.
@@ -66,7 +80,7 @@ cat > /Library/LiteBoard/com.liteboard.daemon.plist <<EOF
 	<string>com.liteboard.daemon</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>$APP/LiteBoard</string>
+		<string>$STABLE/LiteBoard</string>
 	</array>
 	<key>UserName</key>
 	<string>root</string>
@@ -98,6 +112,7 @@ cp "$D"/usr/libexec/liteboard-watchdog "$D"/usr/libexec/liteboard-boot /usr/libe
 chmod 755 /usr/bin/liteboardctl /usr/libexec/liteboard-watchdog /usr/libexec/liteboard-boot
 chown root:wheel /Library/LiteBoard/*.plist
 
+say "daemon plist and scripts installed"
 # Make the in-app button work from now on, even if the installer didn't keep setuid.
 chown root:wheel "$APP/lbroot" && chmod 6755 "$APP/lbroot"
 
