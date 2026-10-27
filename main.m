@@ -64,6 +64,7 @@ int main(int argc, char **argv) {
 		}
 
 		if (daemon) {
+			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ LBRescueLaunch(); });
 			// Log a heartbeat from a background thread. If UIKit never reaches
 			// didFinishLaunching (blocked waiting on a service SpringBoard used to provide),
 			// abort after ~24s (before the 30s watchdog grace ends) so the crash report shows what the main thread was waiting on.

@@ -19,6 +19,7 @@
 	self.window.backgroundColor = [UIColor blackColor];
 	self.window.rootViewController = [[LBGridController alloc] init];
 	[self.window makeKeyAndVisible];
+	LBLog(@"window: frame=%@ hidden=%d key=%d screen=%@", NSStringFromCGRect(self.window.frame), self.window.hidden, self.window.isKeyWindow, [UIScreen mainScreen]);
 	[self addGearButton];
 
 	if (LBReplaceMode) {

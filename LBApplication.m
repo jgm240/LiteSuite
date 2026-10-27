@@ -1,5 +1,6 @@
 #import "LBApplication.h"
 #import "LBPrivate.h"
+#import <objc/runtime.h>
 
 @implementation LBApplication {
 	NSHashTable *_orientationObservers;
@@ -38,3 +39,29 @@
 }
 
 @end
+
+void LBRescueLaunch(void) {
+	if (LBLaunched) return;
+	UIApplication *app = [UIApplication sharedApplication];
+	LBLog(@"rescue: not launched after 3s (app=%@ delegate=%@ state=%ld)", app, app.delegate, (long)app.applicationState);
+
+	NSArray *keys = @[@"aunch", @"cene", @"orkspace", @"pringBoard", @"inishLaunching", @"ctivat", @"ransaction"];
+	for (Class c = [app class]; c && c != [NSObject class]; c = class_getSuperclass(c)) {
+		unsigned n = 0;
+		Method *ms = class_copyMethodList(c, &n);
+		for (unsigned i = 0; i < n; i++) {
+			NSString *name = NSStringFromSelector(method_getName(ms[i]));
+			for (NSString *k in keys) {
+				if ([name rangeOfString:k].location != NSNotFound) { LBLog(@"  %s  -%@", class_getName(c), name); break; }
+			}
+		}
+		free(ms);
+	}
+
+	@try {
+		BOOL ok = [app.delegate application:app didFinishLaunchingWithOptions:@{}];
+		LBLog(@"rescue: delegate returned %d, launched=%d", ok, LBLaunched);
+	} @catch (NSException *e) {
+		LBLog(@"rescue: exception %@\n%@", e, e.callStackSymbols);
+	}
+}
