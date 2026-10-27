@@ -1,4 +1,5 @@
-// Minimal IPA extractor (zlib only): lbunzip <file.ipa> <destdir>
+// Minimal IPA extractor (zlib only). Built into LiteBoard itself: `LiteBoard --unzip <file.ipa> <destdir>`
+// (a separate helper binary can be dropped or made non-executable by re-signing installers).
 // `unzip` is not guaranteed on a jailbroken iPad. Extracts only Payload/ entries,
 // rejects absolute paths, "..", and symlinks, verifies CRC32, keeps unix modes.
 #include <errno.h>
@@ -32,9 +33,8 @@ static int safe_name(const char *n, size_t len) {
 	return 1;
 }
 
-int main(int argc, char **argv) {
-	if (argc != 3) { fprintf(stderr, "usage: lbunzip file.ipa destdir\n"); return 2; }
-	FILE *f = fopen(argv[1], "rb");
+int lbunzip_extract(const char *ipa, const char *dest) {
+	FILE *f = fopen(ipa, "rb");
 	if (!f) { perror("open"); return 1; }
 	fseek(f, 0, SEEK_END);
 	long size = ftell(f);
@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
 	uint32_t cdOff = u32(z + e + 16);
 	if (cdOff >= (uint32_t)size) { fprintf(stderr, "bad directory\n"); return 1; }
 
-	size_t dlen = strlen(argv[2]);
+	size_t dlen = strlen(dest);
 	long p = cdOff;
 	int extracted = 0;
 	for (unsigned i = 0; i < count; i++) {
@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
 
 		char path[2048];
 		if (dlen + 1 + nlen + 1 > sizeof path) { fprintf(stderr, "path too long\n"); return 1; }
-		snprintf(path, sizeof path, "%s/%.*s", argv[2], (int)nlen, name);
+		snprintf(path, sizeof path, "%s/%.*s", dest, (int)nlen, name);
 
 		if (name[nlen - 1] == '/') { // directory
 			path[strlen(path) - 1] = 0;
@@ -125,3 +125,10 @@ int main(int argc, char **argv) {
 	if (!extracted) { fprintf(stderr, "no Payload entries\n"); return 1; }
 	return 0;
 }
+
+#ifdef LBUNZIP_STANDALONE
+int main(int argc, char **argv) {
+	if (argc != 3) { fprintf(stderr, "usage: lbunzip file.ipa destdir\n"); return 2; }
+	return lbunzip_extract(argv[1], argv[2]);
+}
+#endif

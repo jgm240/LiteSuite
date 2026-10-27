@@ -5,6 +5,8 @@
 
 BOOL LBReplaceMode;
 
+extern int lbunzip_extract(const char *ipa, const char *dest);
+
 void LBLog(NSString *format, ...) {
 	va_list ap;
 	va_start(ap, format);
@@ -30,6 +32,8 @@ static void onException(NSException *e) {
 }
 
 int main(int argc, char **argv) {
+	// `LiteBoard --unzip <ipa> <dir>`: used by ctl/setup.sh to install updates; no UI is started.
+	if (argc == 4 && strcmp(argv[1], "--unzip") == 0) return lbunzip_extract(argv[2], argv[3]);
 	@autoreleasepool {
 		BOOL daemon = getenv("LITEBOARD_REPLACE") != NULL;
 		LBReplaceMode = daemon || [[NSBundle mainBundle].bundleIdentifier isEqualToString:@"com.apple.springboard"];

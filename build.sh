@@ -15,10 +15,6 @@ helper() { # helper <script path relative to the app bundle> <output>
 	ldid -S"$ROOT/entitlements.plist" "$2"
 }
 
-# --- lbunzip (used by the in-app updater, runs as root)
-clang -target armv7-apple-ios8.0 -isysroot "$SDK" -Os -Wl,-w -lz -o "$OUT/lbunzip" helper/lbunzip.c
-ldid -S"$ROOT/entitlements.plist" "$OUT/lbunzip"
-
 # --- LiteBoard (installer.ipa)
 make clean >/dev/null 2>&1 || true
 make
@@ -28,7 +24,6 @@ cp -R "$APP" "$STAGE/Payload/LiteBoard.app"
 B=$STAGE/Payload/LiteBoard.app
 mkdir -p "$B/ctl" && cp -R layout/usr layout/Library "$B/ctl/" && cp ctl/setup.sh "$B/ctl/"
 helper ctl/setup.sh "$B/lbroot"
-cp "$OUT/lbunzip" "$B/lbunzip"
 
 # --- LiteKB keyboard extension (goes into LiteSuite.ipa, inside LiteBoard.app/PlugIns)
 KBX=$OUT/LiteKB.appex && mkdir -p "$KBX"
@@ -73,7 +68,6 @@ pack(os.path.join(out, "stage-installer"), "installer.ipa")
 pack(os.path.join(out, "stage-suite"), "LiteSuite.ipa")
 pack(os.path.join(out, "stage-remove"), "LiteboardRemove.ipa")
 EOF
-rm -f "$OUT/lbunzip"
 rm -rf "$OUT/stage-installer" "$OUT/stage-suite" "$OUT/stage-remove" "$OUT/LiteKB.appex"
 (cd "$OUT" && shasum -a 256 LiteSuite.ipa > LiteSuite.ipa.sha256)
 ls -l "$OUT"

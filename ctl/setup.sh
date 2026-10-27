@@ -26,9 +26,9 @@ if [ "$1" = update ]; then
 	IPA=/var/tmp/liteboard-update.ipa
 	T=/var/tmp/lbupdate.$$
 	[ -f "$IPA" ] || { echo "no update file"; exit 1; }
-	[ -x "$APP/lbunzip" ] || { echo "lbunzip missing"; exit 1; }
+	[ -x "$APP/LiteBoard" ] || chmod 755 "$APP/LiteBoard"
 	rm -rf "$T"; mkdir -p "$T" || exit 1
-	"$APP/lbunzip" "$IPA" "$T" || { rm -rf "$T" "$IPA"; echo "unzip failed"; exit 1; }
+	"$APP/LiteBoard" --unzip "$IPA" "$T" || { rm -rf "$T" "$IPA"; echo "unzip failed"; exit 1; }
 	NEW="$T/Payload/LiteBoard.app"
 	[ -f "$NEW/LiteBoard" ] || { rm -rf "$T" "$IPA"; echo "not a LiteBoard IPA"; exit 1; }
 	case "$APP" in
