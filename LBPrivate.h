@@ -28,3 +28,6 @@ extern BOOL LBReplaceMode; // YES when running as the SpringBoard replacement
 
 // Writes a tagged line to stderr (-> /var/log/liteboard.log when run as the daemon).
 void LBLog(NSString *format, ...);
+
+// Set once application:didFinishLaunching: has run (daemon mode uses it to detect a hung UIKit startup).
+extern volatile int LBLaunched;

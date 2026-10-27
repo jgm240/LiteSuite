@@ -4,6 +4,7 @@
 #import <signal.h>
 
 BOOL LBReplaceMode;
+volatile int LBLaunched;
 
 extern int lbunzip_extract(const char *ipa, const char *dest);
 
@@ -61,6 +62,21 @@ int main(int argc, char **argv) {
 			LBLog(@"bundle id is now %@", [NSBundle mainBundle].bundleIdentifier);
 		}
 
+		if (daemon) {
+			// Log a heartbeat from a background thread. If UIKit never reaches
+			// didFinishLaunching (blocked waiting on a service SpringBoard used to provide),
+			// abort after ~24s (before the 30s watchdog grace ends) so the crash report shows what the main thread was waiting on.
+			dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+				for (int i = 1; i <= 10; i++) {
+					sleep(3);
+					LBLog(@"tick %d: launched=%d", i, LBLaunched);
+					if (i == 8 && !LBLaunched) {
+						LBLog(@"UIKit never finished launching; aborting for a stack trace");
+						abort();
+					}
+				}
+			});
+		}
 		LBLog(@"main: replace=%d, calling UIApplicationMain", LBReplaceMode);
 		return UIApplicationMain(argc, argv, nil, NSStringFromClass([LBAppDelegate class]));
 	}

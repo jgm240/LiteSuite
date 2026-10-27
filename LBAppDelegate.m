@@ -13,6 +13,7 @@
 }
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)options {
+	LBLaunched = 1;
 	LBLog(@"didFinishLaunching reached");
 	self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
 	self.window.backgroundColor = [UIColor blackColor];

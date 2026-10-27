@@ -89,7 +89,7 @@ cat > /Library/LiteBoard/com.liteboard.daemon.plist <<EOF
 		$IDSERVICE
 	</dict>
 	<key>StandardErrorPath</key>
-	<string>/var/log/liteboard.log</string>
+	<string>/var/mobile/Library/Logs/CrashReporter/LiteBoard-stderr.ips</string>
 </dict>
 </plist>
 EOF

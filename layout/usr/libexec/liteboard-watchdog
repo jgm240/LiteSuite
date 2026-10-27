@@ -2,7 +2,7 @@
 # Restores SpringBoard if LiteBoard never starts or stops refreshing its heartbeat.
 # LiteBoard rewrites the heartbeat file every 3s with the current time. We only compare
 # the contents between checks, so no `date` is needed: three unchanged checks (15s) = dead.
-# Before giving up it saves what it can to /var/mobile so the failure can be diagnosed.
+# Before giving up it saves a launchctl snapshot next to the crash reports (see below).
 F=/var/run/liteboard.alive
 
 sleep 30   # grace period for first launch
@@ -17,8 +17,8 @@ while sleep 5; do
 	fi
 	prev=$cur
 	if [ "$stale" -ge 3 ]; then
-		cp /var/log/liteboard.log /var/mobile/liteboard-last.log 2>/dev/null
-		launchctl list > /var/mobile/liteboard-launchctl.txt 2>&1
+		# crash-report folder: `idevicecrashreport -e -k <dir>` fetches these over USB
+		launchctl list > /var/mobile/Library/Logs/CrashReporter/LiteBoard-launchctl.ips 2>&1
 		/usr/bin/liteboardctl disable
 		exit 0
 	fi
