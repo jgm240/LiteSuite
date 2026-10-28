@@ -53,6 +53,7 @@ void LBPopInitMode(void);
 // Logs whether the event-port Mach services we declared were really checked in, plus the app's
 // activation state (UIKit does not deliver touches to an inactive app).
 void LBProbeSystem(void);
+void LBDumpHostingClasses(void);
 
 // A tap at a point given as 0..1 fractions of the panel's native (landscape) orientation. Maps it through the
 // window transform, hit-tests the window and activates the control or cell under it. Skipped once UIKit

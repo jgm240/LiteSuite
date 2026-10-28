@@ -3,6 +3,7 @@
 #import <objc/runtime.h>
 #import <objc/message.h>
 #import <dlfcn.h>
+#import <sys/stat.h>
 
 static BOOL sUIKitTouchSeen;
 
@@ -368,4 +369,42 @@ void LBScrollAtNormalizedPoint(CGPoint n, CGFloat dyNormalized) {
 		sv.contentOffset = CGPointMake(sv.contentOffset.x, MIN(MAX(y, -sv.contentInset.top), maxY));
 		return;
 	}
+}
+
+// Writes every class (with methods) from the frameworks SpringBoard uses to host apps to a file next to the
+// crash reports, so the app-hosting design can be worked out from the device's real private API.
+void LBDumpHostingClasses(void) {
+	const char *fw[] = { "FrontBoard", "FrontBoardServices", "BackBoardServices", "AssertionServices", "SpringBoardServices", "BaseBoard", "BaseBoardUI", "FrontBoardUI", NULL };
+	for (int i = 0; fw[i]; i++) {
+		char path[256];
+		snprintf(path, sizeof path, "/System/Library/PrivateFrameworks/%s.framework/%s", fw[i], fw[i]);
+		void *h = dlopen(path, RTLD_NOW);
+		LBLog(@"classes: dlopen %s -> %s", fw[i], h ? "ok" : "no");
+	}
+	FILE *f = fopen("/var/mobile/Library/Logs/CrashReporter/LiteBoard-classes.ips", "w");
+	if (!f) return;
+	unsigned n = 0;
+	Class *cs = objc_copyClassList(&n);
+	for (unsigned i = 0; i < n; i++) {
+		const char *img = class_getImageName(cs[i]);
+		if (!img) continue;
+		BOOL want = NO;
+		for (int k = 0; fw[k]; k++) { char m[128]; snprintf(m, sizeof m, "/%s.framework/", fw[k]); if (strstr(img, m)) want = YES; }
+		if (!want) continue;
+		Class sup = class_getSuperclass(cs[i]);
+		fprintf(f, "@interface %s : %s  // %s\n", class_getName(cs[i]), sup ? class_getName(sup) : "-", img);
+		for (int meta = 1; meta >= 0; meta--) {
+			Class c = meta ? object_getClass(cs[i]) : cs[i];
+			unsigned mc = 0;
+			Method *ms = class_copyMethodList(c, &mc);
+			for (unsigned j = 0; j < mc; j++)
+				fprintf(f, "%s %s  %s\n", meta ? "+" : "-", sel_getName(method_getName(ms[j])), method_getTypeEncoding(ms[j]) ?: "");
+			free(ms);
+		}
+		fprintf(f, "@end\n");
+	}
+	free(cs);
+	fclose(f);
+	chmod("/var/mobile/Library/Logs/CrashReporter/LiteBoard-classes.ips", 0644);
+	LBLog(@"classes: dumped %u classes total scanned", n);
 }
