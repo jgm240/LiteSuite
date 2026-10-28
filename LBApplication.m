@@ -56,6 +56,8 @@ static BOOL sUIKitTouchSeen;
 @end
 
 void LBConfirmUsable(void) {
+	extern char LBFBTryPath[160];
+	if (LBFBTryPath[0]) unlink(LBFBTryPath);   // FrontBoard start-up worked: keep using it
 	static BOOL done;
 	if (done) return;
 	done = YES;

@@ -4,8 +4,12 @@
 #import "LBHosting.h"
 #import <execinfo.h>
 #import <signal.h>
+#import <unistd.h>
+#import <fcntl.h>
+#import <dlfcn.h>
 
 BOOL LBReplaceMode;
+char LBFBTryPath[160];
 volatile int LBLaunched;
 
 extern int lbunzip_extract(const char *ipa, const char *dest);
@@ -169,6 +173,27 @@ int main(int argc, char **argv) {
 		      [NSBundle mainBundle].infoDictionary[@"CFBundleShortVersionString"], LBReplaceMode, [NSBundle mainBundle].bundlePath);
 		// In daemon mode UIKit takes its SpringBoard path, so use our SpringBoard-compatible application class.
 		NSString *appClass = LBReplaceMode ? NSStringFromClass([LBApplication class]) : nil;
+		if (daemon) {
+			// SpringBoard's own main() ends in FBSystemAppMain(argc, argv, "SpringBoard", "SpringBoard"), which sets up
+			// FrontBoard (needed to host apps) and then runs UIApplicationMain. Try it once; if that attempt never
+			// reached a usable screen (marker still there), fall back to plain UIApplicationMain for good.
+			NSString *ver = [NSBundle mainBundle].infoDictionary[@"CFBundleShortVersionString"] ?: @"0";   // a new version gets a fresh try
+			snprintf(LBFBTryPath, sizeof LBFBTryPath, "/Library/LiteBoard/fb-try-%s", ver.UTF8String);
+			char failBuf[200]; snprintf(failBuf, sizeof failBuf, "/Library/LiteBoard/fb-failed-%s", ver.UTF8String);
+			const char *tryMark = LBFBTryPath, *failMark = failBuf;
+			BOOL failed = access(failMark, F_OK) == 0;
+			if (!failed && access(tryMark, F_OK) == 0) { close(open(failMark, O_CREAT | O_WRONLY, 0644)); failed = YES; }
+			if (!failed) {
+				void *fb = dlopen("/System/Library/PrivateFrameworks/FrontBoard.framework/FrontBoard", RTLD_NOW);
+				int (*fbMain)(int, char **, NSString *, NSString *) = fb ? dlsym(fb, "FBSystemAppMain") : NULL;
+				if (fbMain) {
+					close(open(tryMark, O_CREAT | O_WRONLY, 0644));
+					LBLog(@"main: using FBSystemAppMain");
+					return fbMain(argc, argv, appClass, NSStringFromClass([LBAppDelegate class]));
+				}
+			}
+			LBLog(@"main: FrontBoard mode %@, using UIApplicationMain", failed ? @"failed earlier" : @"unavailable");
+		}
 		return UIApplicationMain(argc, argv, appClass, NSStringFromClass([LBAppDelegate class]));
 	}
 }
