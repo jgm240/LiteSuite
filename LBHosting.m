@@ -93,7 +93,7 @@ static void LBHostPoll(int n) {
 			id hm = SEND(id, found, @"contextHostManager") ?: SEND(id, found, @"hostManager");
 			UIView *v = SEND(id, hm, @"hostViewForRequester:enableAndOrderFront:", @"liteboard", YES);
 			LBLog(@"hosting: host view %@ for %@", v, hm);
-			UIWindow *w = [UIApplication sharedApplication].windows.firstObject;
+			UIWindow *w = [UIApplication sharedApplication].delegate.window;
 			if (v && w) {
 				sHostContainer = [[UIView alloc] initWithFrame:w.bounds];
 				sHostContainer.backgroundColor = [UIColor blackColor];

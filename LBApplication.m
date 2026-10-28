@@ -210,6 +210,8 @@ static void LBLogMethods(Class cls, BOOL meta, NSArray *keys, NSString *tag, int
 }
 
 void LBAttachWindowContext(void) {
+	extern char LBFBTryPath[160];
+	if (LBFBTryPath[0]) return;   // FrontBoard mode: FBSystemApp already scales/rotates and binds the window
 	static BOOL once;
 	if (once) return;
 	once = YES;
@@ -267,6 +269,8 @@ void LBLogScreenInfo(NSString *tag) {
 }
 
 void LBFitWindowToScreen(void) {
+	extern char LBFBTryPath[160];
+	if (LBFBTryPath[0]) return;   // FrontBoard mode: FBSystemApp already scales/rotates and binds the window
 	UIWindow *w = [UIApplication sharedApplication].windows.firstObject;
 	UIScreen *sc = [UIScreen mainScreen];
 	if (!w) return;
@@ -322,6 +326,8 @@ static void LBRescale(UIView *v, CGFloat s) {
 }
 
 void LBRescaleViews(void) {
+	extern char LBFBTryPath[160];
+	if (LBFBTryPath[0]) return;   // FrontBoard mode: FBSystemApp already scales/rotates and binds the window
 	CGFloat s = GSMainScreenScaleFactor();
 	if (s < 1.01) return;
 	for (UIWindow *w in [UIApplication sharedApplication].windows) LBRescale(w, s);
@@ -329,7 +335,7 @@ void LBRescaleViews(void) {
 
 void LBSyntheticTapAtNormalizedPoint(CGPoint n) {
 	if (sUIKitTouchSeen) return;   // UIKit is delivering touches itself
-	UIWindow *w = [UIApplication sharedApplication].windows.firstObject;
+	UIWindow *w = [UIApplication sharedApplication].delegate.window;
 	if (!w || sPanel.width <= 0) return;
 	// The digitizer reports 0..1 in the upright portrait orientation (log: a tap on the top-right gear read x=.95 y=.03).
 	CGPoint pt = CGPointMake(n.x * w.bounds.size.width, n.y * w.bounds.size.height);
@@ -362,7 +368,7 @@ void LBSyntheticTapAtNormalizedPoint(CGPoint n) {
 // Finger drag: scroll the scroll view under the finger by dy points (positive = content moves up).
 void LBScrollAtNormalizedPoint(CGPoint n, CGFloat dyNormalized) {
 	if (sUIKitTouchSeen) return;
-	UIWindow *w = [UIApplication sharedApplication].windows.firstObject;
+	UIWindow *w = [UIApplication sharedApplication].delegate.window;
 	if (!w) return;
 	CGPoint pt = CGPointMake(n.x * w.bounds.size.width, n.y * w.bounds.size.height);
 	for (UIView *v = [w hitTest:pt withEvent:nil]; v; v = v.superview) {
