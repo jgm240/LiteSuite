@@ -29,7 +29,7 @@ static NSMutableSet<NSString *> *_seen;
 	if (event.type == UIEventTypeTouches) {
 		static BOOL first = YES;
 		if (first) { first = NO; sUIKitTouchSeen = YES; LBLog(@"first touch event received (UIKit path)"); }
-		LBConfirmUsable();
+		// Not a confirmation: a touch on a black screen proves nothing. Confirmed when a visible control is used.
 	}
 	[super sendEvent:event];
 }

@@ -29,7 +29,7 @@
 		// The watchdog restores SpringBoard if this stops being refreshed.
 		[self beat];
 		_heartbeat = [NSTimer scheduledTimerWithTimeInterval:3 target:self selector:@selector(beat) userInfo:nil repeats:YES];
-		LBHomeStartListening(^{ LBConfirmUsable(); [LBLauncher goHome]; });
+		LBHomeStartListening(^{ [LBLauncher goHome]; });
 	} else if (![[[NSUserDefaults standardUserDefaults] stringForKey:@"promptShownFor"] isEqualToString:[LBUpdater currentVersion]]) {
 		// Once per version (a reinstall keeps the data, and the daemon's copy must be refreshed
 		// by running setup again); the gear button (Settings > SpringBoard) offers it any time.
@@ -90,6 +90,7 @@
 }
 
 - (void)openSettings {
+	LBConfirmUsable();   // a visible button was tapped
 	LBSettingsController *vc = [[LBSettingsController alloc] init];
 	vc.onReplace = ^{ [self offerReplace]; };
 	UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];

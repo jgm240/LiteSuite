@@ -134,6 +134,7 @@ static UIImage *LBPlaceholderIcon(NSString *name) {
 }
 
 - (void)collectionView:(UICollectionView *)cv didSelectItemAtIndexPath:(NSIndexPath *)ip {
+	LBConfirmUsable();   // the grid is visible and answering taps
 	[LBLauncher launchBundleID:_apps[ip.item][@"id"]];
 }
 
