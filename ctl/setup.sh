@@ -155,6 +155,9 @@ cat > /Library/LiteBoard/com.liteboard.daemon.plist <<EOF
 		<key>com.apple.springboard</key>
 		<dict><key>ResetAtClose</key><true/></dict>
 		<!-- GraphicsServices event port, named after the bundle id UIKit sees. -->
+		<!-- FrontBoard (started by FBSystemAppMain) checks these two in: apps talk to them to launch and to get scenes. -->
+		<key>com.apple.frontboard.systemappservices</key><true/>
+		<key>com.apple.frontboard.workspace</key><true/>
 		<key>com.apple.springboard.gsEvents</key><true/>
 		<key>com.liteboard.app.gsEvents</key><true/>
 		$IDSERVICE
