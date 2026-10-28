@@ -2,6 +2,7 @@
 #import "LBAppDelegate.h"
 #import "LBPrivate.h"
 #import <dlfcn.h>
+#import <spawn.h>
 #import <signal.h>
 #import <unistd.h>
 #import <sys/wait.h>
@@ -21,6 +22,16 @@ extern char **environ;
 		return;
 	}
 	LBLog(@"launch: %@ (child=%d)", bundleID, sChild);
+	// Nothing hosts an app's window without SpringBoard (a forked app froze the screen on a spinner), so hand
+	// the screen back to SpringBoard and have it open the app. A reboot brings LiteBoard back (Permanent).
+	{
+		[bundleID writeToFile:@"/var/tmp/liteboard.open" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+		pid_t hp = 0;
+		char *hargv[] = { "/usr/bin/liteboardctl", "handoff", NULL };
+		int rc = posix_spawn(&hp, hargv[0], NULL, NULL, hargv, environ);
+		LBLog(@"launch: handoff to SpringBoard for %@ rc=%d pid=%d", bundleID, rc, hp);
+		return;
+	}
 	if (sChild > 0) return;
 
 	LSApplicationProxy *proxy = [LSApplicationProxy applicationProxyForIdentifier:bundleID];

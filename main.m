@@ -52,6 +52,17 @@ int main(int argc, char **argv) {
 		}
 		return 0;
 	}
+	// `LiteBoard --open <bundle id>`: used by liteboardctl after handing the screen back to SpringBoard.
+	if (argc == 3 && strcmp(argv[1], "--open") == 0) {
+		@autoreleasepool {
+			NSString *bid = [NSString stringWithUTF8String:argv[2]];
+			for (int i = 0; i < 8; i++) {
+				if ([[LSApplicationWorkspace defaultWorkspace] openApplicationWithBundleID:bid]) return 0;
+				sleep(3);
+			}
+		}
+		return 1;
+	}
 	// `LiteBoard --bundle-id`: lets ctl/setup.sh declare the right Mach service names.
 	if (argc == 2 && strcmp(argv[1], "--bundle-id") == 0) {
 		@autoreleasepool { printf("%s\n", [NSBundle mainBundle].bundleIdentifier.UTF8String); }

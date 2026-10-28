@@ -42,6 +42,23 @@ disable)
 	launchctl load "$SB" 2>/dev/null
 	launchctl unload "$W" 2>/dev/null   # last: the watchdog may be the caller
 	;;
+handoff)
+	# LiteBoard cannot host apps: give the screen back to SpringBoard and open the app there.
+	# Unlike `disable` this leaves no marker, so the next boot still starts LiteBoard.
+	launchctl unload /Library/LiteBoard/com.liteboard.handoff.plist 2>/dev/null
+	launchctl load /Library/LiteBoard/com.liteboard.handoff.plist
+	;;
+_handoff)
+	launchctl unload "$W" 2>/dev/null
+	launchctl unload "$S" 2>/dev/null
+	launchctl unload "$D" 2>/dev/null
+	launchctl load "$SB" 2>/dev/null
+	BID=$(while read -r l; do echo "$l"; break; done < /var/tmp/liteboard.open)
+	rm -f /var/tmp/liteboard.open /var/run/liteboard.alive /var/run/liteboard.confirmed
+	sleep 10
+	[ -n "$BID" ] && /Library/LiteBoard/LiteBoard.app/LiteBoard --open "$BID"
+	launchctl unload /Library/LiteBoard/com.liteboard.handoff.plist 2>/dev/null
+	;;
 status)
 	launchctl list | grep -E 'SpringBoard|liteboard'
 	;;
