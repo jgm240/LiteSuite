@@ -82,6 +82,7 @@ if [ "$1" = update ]; then
 fi
 
 mkdir -p /Library/LiteBoard || exit 1
+rm -f /Library/LiteBoard/booting   # a manual setup run starts the one-strike counter afresh
 cp "$D"/Library/LiteBoard/*.plist /Library/LiteBoard/ || exit 1
 # GraphicsServices checks in "<bundle id>.gsEvents" (and, as SpringBoard, PurpleSystemEventPort).
 # launchd refuses (error 1100) any name the job does not declare, so declare every candidate.

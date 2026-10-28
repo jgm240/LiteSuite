@@ -59,6 +59,7 @@ static NSMutableSet<NSString *> *_seen;
 
 void LBConfirmUsable(void) {
 	extern char LBFBTryPath[160];
+	unlink("/Library/LiteBoard/booting");   // a boot-time start that works is trusted again
 	if (LBFBTryPath[0]) unlink(LBFBTryPath);   // FrontBoard start-up worked: keep using it
 	static BOOL done;
 	if (done) return;

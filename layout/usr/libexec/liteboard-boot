@@ -7,5 +7,14 @@
 LB=/Library/LiteBoard/LiteBoard.app/LiteBoard
 [ -x "$LB" ] && [ -n "$("$LB" --bundle-id 2>/dev/null)" ] || exit 0
 
+# One-strike rule: a boot-time start that was never confirmed (the user did not see and tap a working
+# LiteBoard) switches the boot job off for good, so a bad build can cost at most one restart.
+if [ -e /Library/LiteBoard/booting ]; then
+	: > /Library/LiteBoard/disabled
+	rm -f /Library/LiteBoard/booting
+	exit 0
+fi
+: > /Library/LiteBoard/booting
+
 sleep 20   # let stock SpringBoard and the jailbreak settle first
 LB_BOOT=1 /usr/bin/liteboardctl enable
