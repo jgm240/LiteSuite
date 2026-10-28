@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds out/installer.ipa (LiteBoard), out/LiteSuite.ipa (LiteBoard + LiteKB) and out/LiteboardRemove.ipa (needs Theos in ~/theos, ldid, python3).
+# Builds out/installer.ipa (LiteBoard), out/LiteSuite.ipa (LiteBoard + LiteKB), out/LiteKB.ipa (keyboard only) and out/LiteboardRemove.ipa (needs Theos in ~/theos, ldid, python3).
 set -e
 cd "$(dirname "$0")"
 export THEOS=${THEOS:-$HOME/theos}
@@ -42,6 +42,16 @@ ldid -S "$KBX/LiteKB"   # no custom entitlements: re-signing installers cannot k
 SSTAGE=$OUT/stage-suite && mkdir -p "$SSTAGE" && cp -R "$STAGE/Payload" "$SSTAGE/Payload"
 mkdir -p "$SSTAGE/Payload/LiteBoard.app/PlugIns" && cp -R "$KBX" "$SSTAGE/Payload/LiteBoard.app/PlugIns/LiteKB.appex"
 
+# --- LiteKB.ipa: the keyboard alone, in a tiny container app (its own bundle id, so it can sit beside LiteSuite)
+KSTAGE=$OUT/stage-kb && mkdir -p "$KSTAGE/Payload/LiteKB.app/PlugIns"
+KA=$KSTAGE/Payload/LiteKB.app
+clang -target armv7-apple-ios9.0 -isysroot "$SDK" -fobjc-arc -Os -framework UIKit -framework Foundation -framework CoreGraphics -undefined dynamic_lookup \
+	-Wl,-w -o "$KA/LiteKBHost" LiteKB/Host/main.m
+ldid -S "$KA/LiteKBHost"
+cp LiteKB/Host/Info.plist "$KA/Info.plist"
+cp -R "$KBX" "$KA/PlugIns/LiteKB.appex"
+sed 's/com\.liteboard\.app\.litekb/com.liteboard.litekb.keyboard/' LiteKB/Info.plist > "$KA/PlugIns/LiteKB.appex/Info.plist"
+
 # --- LiteboardRemove (LiteboardRemove.ipa)
 (cd Remove && make clean >/dev/null 2>&1 || true; make)
 RSTAGE=$OUT/stage-remove && mkdir -p "$RSTAGE/Payload"
@@ -73,8 +83,9 @@ def pack(stage, ipa):
                 z.writestr(info, open(p, "rb").read())
 pack(os.path.join(out, "stage-installer"), "installer.ipa")
 pack(os.path.join(out, "stage-suite"), "LiteSuite.ipa")
+pack(os.path.join(out, "stage-kb"), "LiteKB.ipa")
 pack(os.path.join(out, "stage-remove"), "LiteboardRemove.ipa")
 EOF
-rm -rf "$OUT/stage-installer" "$OUT/stage-suite" "$OUT/stage-remove" "$OUT/LiteKB.appex"
+rm -rf "$OUT/stage-installer" "$OUT/stage-suite" "$OUT/stage-remove" "$OUT/stage-kb" "$OUT/LiteKB.appex"
 (cd "$OUT" && shasum -a 256 LiteSuite.ipa > LiteSuite.ipa.sha256)
 ls -l "$OUT"
