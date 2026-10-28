@@ -326,10 +326,10 @@ void LBSyntheticTapAtNormalizedPoint(CGPoint n) {
 	if (sUIKitTouchSeen) return;   // UIKit is delivering touches itself
 	UIWindow *w = [UIApplication sharedApplication].windows.firstObject;
 	if (!w || sPanel.width <= 0) return;
-	CGPoint panel = CGPointMake(n.x * sPanel.width, n.y * sPanel.height);
-	CGPoint pt = CGPointApplyAffineTransform(panel, CGAffineTransformInvert(sFit));
+	// The digitizer reports 0..1 in the upright portrait orientation (log: a tap on the top-right gear read x=.95 y=.03).
+	CGPoint pt = CGPointMake(n.x * w.bounds.size.width, n.y * w.bounds.size.height);
 	UIView *hit = [w hitTest:pt withEvent:nil];
-	LBLog(@"tap: norm=(%.3f,%.3f) panel=(%.0f,%.0f) point=(%.0f,%.0f) hit=%@", n.x, n.y, panel.x, panel.y, pt.x, pt.y, hit);
+	LBLog(@"tap: norm=(%.3f,%.3f) point=(%.0f,%.0f) hit=%@", n.x, n.y, pt.x, pt.y, hit);
 	LBConfirmUsable();
 	for (UIView *v = hit; v; v = v.superview) {
 		if ([v isKindOfClass:[UIControl class]]) { [(UIControl *)v sendActionsForControlEvents:UIControlEventTouchUpInside]; return; }
@@ -351,5 +351,21 @@ void LBSyntheticTapAtNormalizedPoint(CGPoint n) {
 				[tv.delegate tableView:tv didSelectRowAtIndexPath:ip];
 			return;
 		}
+	}
+}
+
+// Finger drag: scroll the scroll view under the finger by dy points (positive = content moves up).
+void LBScrollAtNormalizedPoint(CGPoint n, CGFloat dyNormalized) {
+	if (sUIKitTouchSeen) return;
+	UIWindow *w = [UIApplication sharedApplication].windows.firstObject;
+	if (!w) return;
+	CGPoint pt = CGPointMake(n.x * w.bounds.size.width, n.y * w.bounds.size.height);
+	for (UIView *v = [w hitTest:pt withEvent:nil]; v; v = v.superview) {
+		if (![v isKindOfClass:[UIScrollView class]]) continue;
+		UIScrollView *sv = (UIScrollView *)v;
+		CGFloat maxY = MAX(0, sv.contentSize.height - sv.bounds.size.height + sv.contentInset.bottom);
+		CGFloat y = sv.contentOffset.y - dyNormalized * w.bounds.size.height;
+		sv.contentOffset = CGPointMake(sv.contentOffset.x, MIN(MAX(y, -sv.contentInset.top), maxY));
+		return;
 	}
 }

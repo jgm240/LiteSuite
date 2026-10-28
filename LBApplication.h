@@ -58,6 +58,7 @@ void LBProbeSystem(void);
 // window transform, hit-tests the window and activates the control or cell under it. Skipped once UIKit
 // delivers touches itself.
 void LBSyntheticTapAtNormalizedPoint(CGPoint p);
+void LBScrollAtNormalizedPoint(CGPoint p, CGFloat dyNormalized);
 
 // Sets contentScaleFactor on every view of every window so text and images render at the panel's 2x.
 void LBRescaleViews(void);

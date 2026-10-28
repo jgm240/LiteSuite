@@ -31,14 +31,30 @@ static UIImage *LBIconFromBundle(NSString *bid) {
 	CGFloat bestArea = 0;
 	for (NSString *f in [[NSFileManager defaultManager] contentsOfDirectoryAtPath:dir error:nil]) {
 		if (![f.pathExtension.lowercaseString isEqualToString:@"png"]) continue;
-		BOOL match = [f hasPrefix:@"AppIcon"] || [f hasPrefix:@"Icon"];
-		for (NSString *n in names) if ([f hasPrefix:n.stringByDeletingPathExtension]) { match = YES; break; }
+		BOOL match = [f.lowercaseString containsString:@"icon"] && ![f.lowercaseString containsString:@"settings"] && ![f.lowercaseString containsString:@"spotlight"] && ![f.lowercaseString containsString:@"small"];
+		for (NSString *n in names) if ([f.lowercaseString hasPrefix:n.stringByDeletingPathExtension.lowercaseString]) { match = YES; break; }
 		if (!match) continue;
 		UIImage *im = [UIImage imageWithContentsOfFile:[dir stringByAppendingPathComponent:f]];
 		CGFloat area = im.size.width * im.size.height * im.scale * im.scale;
 		if (im && area > bestArea) { best = im; bestArea = area; }
 	}
 	return best;
+}
+
+// Rounded square with the first letter, for apps whose icon only lives in a compiled asset catalog.
+static UIImage *LBPlaceholderIcon(NSString *name) {
+	CGSize sz = CGSizeMake(120, 120);
+	UIGraphicsBeginImageContextWithOptions(sz, NO, 1);
+	[[UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, 120, 120) cornerRadius:26] addClip];
+	[[UIColor colorWithWhite:0.25 alpha:1] setFill];
+	UIRectFill(CGRectMake(0, 0, 120, 120));
+	NSString *l = name.length ? [[name substringToIndex:1] uppercaseString] : @"?";
+	NSDictionary *a = @{ NSFontAttributeName: [UIFont boldSystemFontOfSize:64], NSForegroundColorAttributeName: [UIColor whiteColor] };
+	CGSize ts = [l sizeWithAttributes:a];
+	[l drawAtPoint:CGPointMake((120 - ts.width) / 2, (120 - ts.height) / 2) withAttributes:a];
+	UIImage *im = UIGraphicsGetImageFromCurrentImageContext();
+	UIGraphicsEndImageContext();
+	return im;
 }
 
 @implementation LBCell
@@ -74,7 +90,7 @@ static UIImage *LBIconFromBundle(NSString *bid) {
 - (void)viewDidLoad {
 	[super viewDidLoad];
 	_icons = [[NSCache alloc] init];
-	self.collectionView.backgroundColor = LBReplaceMode ? [UIColor colorWithRed:0.05 green:0.1 blue:0.4 alpha:1] : [UIColor blackColor]; // opaque, no wallpaper/blur: cheap to composite
+	self.collectionView.backgroundColor = LBReplaceMode ? [UIColor blackColor] : [UIColor blackColor]; // opaque, no wallpaper/blur: cheap to composite
 	[self.collectionView registerClass:[LBCell class] forCellWithReuseIdentifier:kCell];
 	[self reload];
 }
@@ -107,7 +123,7 @@ static UIImage *LBIconFromBundle(NSString *bid) {
 		dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
 			UIImage *i = [UIImage _applicationIconImageForBundleIdentifier:bid format:2 scale:[UIScreen mainScreen].scale];
 				if (!i) i = LBIconFromBundle(bid);
-				if (!i) return;
+				if (!i) { LBLog(@"icon: none for %@", bid); i = LBPlaceholderIcon(app[@"name"]); }
 				[self->_icons setObject:i forKey:bid];
 				LBRunOnMain(^{
 				if ([cv.indexPathsForVisibleItems containsObject:ip]) [(LBCell *)[cv cellForItemAtIndexPath:ip] icon].image = i;

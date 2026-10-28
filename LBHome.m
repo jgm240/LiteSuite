@@ -47,10 +47,16 @@ static void onEvent(void *target, void *refcon, void *sender, IOHIDEventRef ev) 
 		static BOOL down;
 		static float startX, startY, lastX, lastY;
 		if (touch && !down) { down = YES; startX = x; startY = y; }
+		static BOOL dragging;
+		if (touch && down) {
+			if (fabsf(y - startY) > 0.015f || fabsf(x - startX) > 0.015f) dragging = YES;
+			if (dragging && lastY != y) { CGPoint p = CGPointMake(x, y); CGFloat d = y - lastY; LBRunOnMain(^{ LBScrollAtNormalizedPoint(p, d); }); }
+		}
 		if (touch) { lastX = x; lastY = y; }
 		if (!touch && down) {
 			down = NO;
-			if (fabsf(lastX - startX) < 0.03f && fabsf(lastY - startY) < 0.03f) {   // a tap, not a drag
+			BOOL wasDrag = dragging; dragging = NO;
+			if (!wasDrag && fabsf(lastX - startX) < 0.015f && fabsf(lastY - startY) < 0.015f) {   // a tap, not a drag
 				CGPoint p = CGPointMake(lastX, lastY);
 				LBRunOnMain(^{ LBSyntheticTapAtNormalizedPoint(p); });
 			}
