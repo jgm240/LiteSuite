@@ -1,6 +1,7 @@
 #import "LBLauncher.h"
 #import "LBAppDelegate.h"
 #import "LBPrivate.h"
+#import "LBHosting.h"
 #import <dlfcn.h>
 #import <spawn.h>
 #import <signal.h>
@@ -24,6 +25,7 @@ extern char **environ;
 	LBLog(@"launch: %@ (child=%d)", bundleID, sChild);
 	// Nothing hosts an app's window without SpringBoard (a forked app froze the screen on a spinner), so hand
 	// the screen back to SpringBoard and have it open the app. A reboot brings LiteBoard back (Permanent).
+	if (LBHostLaunch(bundleID)) return;
 	{
 		[bundleID writeToFile:@"/var/tmp/liteboard.open" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 		pid_t hp = 0;
@@ -81,6 +83,7 @@ extern char **environ;
 }
 
 + (void)goHome {
+	if (LBHostIsShowing()) { LBHostClose(); return; }
 	if (sChild > 0) {
 		pid_t p = sChild;
 		kill(p, SIGTERM);

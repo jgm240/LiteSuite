@@ -1,6 +1,7 @@
 #import "LBPrivate.h"
 #import "LBAppDelegate.h"
 #import "LBApplication.h"
+#import "LBHosting.h"
 #import <execinfo.h>
 #import <signal.h>
 
@@ -116,7 +117,7 @@ int main(int argc, char **argv) {
 					}
 					if (i == 4 && LBLaunched) {
 						CFArrayRef ms = CFRunLoopCopyAllModes(CFRunLoopGetMain());
-						CFRunLoopPerformBlock(CFRunLoopGetMain(), ms, ^{ LBLogScreenInfo(@"at attach"); LBAttachWindowContext(); LBFitWindowToScreen(); LBLogScreenInfo(@"after fit"); LBProbeSystem(); dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{ LBDumpHostingClasses(); }); });
+						CFRunLoopPerformBlock(CFRunLoopGetMain(), ms, ^{ LBLogScreenInfo(@"at attach"); LBAttachWindowContext(); LBFitWindowToScreen(); LBLogScreenInfo(@"after fit"); LBProbeSystem(); dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{ LBDumpHostingClasses(); }); LBHostingInit(); });
 						CFRunLoopWakeUp(CFRunLoopGetMain());
 						if (ms) CFRelease(ms);
 					}
