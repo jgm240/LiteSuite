@@ -7,10 +7,12 @@
 
 static BOOL sUIKitTouchSeen;
 
-@implementation LBApplication {
-	NSHashTable *_orientationObservers;
-	NSMutableSet<NSString *> *_seen;
-}
+// File-level state rather than ivars: this class's methods are also copied onto a runtime subclass of
+// FBSystemApp (see main.m), whose instance layout differs from UIApplication's.
+static NSHashTable *_orientationObservers;
+static NSMutableSet<NSString *> *_seen;
+
+@implementation LBApplication
 
 // Real implementations for the SpringBoard-only methods we know about.
 - (void)addActiveOrientationObserver:(id)observer {

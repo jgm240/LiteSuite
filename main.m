@@ -4,6 +4,7 @@
 #import "LBHosting.h"
 #import <execinfo.h>
 #import <signal.h>
+#import <objc/runtime.h>
 #import <unistd.h>
 #import <fcntl.h>
 #import <dlfcn.h>
@@ -186,7 +187,23 @@ int main(int argc, char **argv) {
 			if (!failed) {
 				void *fb = dlopen("/System/Library/PrivateFrameworks/FrontBoard.framework/FrontBoard", RTLD_NOW);
 				int (*fbMain)(int, char **, NSString *, NSString *) = fb ? dlsym(fb, "FBSystemAppMain") : NULL;
-				if (fbMain) {
+				// FBSystemAppMain insists the principal class derives from FBSystemApp: make LBApplication's twin.
+				Class fbApp = NSClassFromString(@"FBSystemApp");
+				Class twin = fbApp ? objc_allocateClassPair(fbApp, "LBSystemApp", 0) : Nil;
+				if (twin) {
+					for (int meta = 0; meta < 2; meta++) {
+						Class from = meta ? object_getClass([LBApplication class]) : [LBApplication class];
+						Class to = meta ? object_getClass(twin) : twin;
+						unsigned n = 0;
+						Method *ms = class_copyMethodList(from, &n);
+						for (unsigned i = 0; i < n; i++) class_addMethod(to, method_getName(ms[i]), method_getImplementation(ms[i]), method_getTypeEncoding(ms[i]));
+						free(ms);
+					}
+					objc_registerClassPair(twin);
+					appClass = @"LBSystemApp";
+					LBLog(@"main: principal class LBSystemApp (superclass %@)", NSStringFromClass(fbApp));
+				}
+				if (fbMain && twin) {
 					close(open(tryMark, O_CREAT | O_WRONLY, 0644));
 					LBLog(@"main: using FBSystemAppMain");
 					return fbMain(argc, argv, appClass, NSStringFromClass([LBAppDelegate class]));
