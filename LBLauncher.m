@@ -20,12 +20,13 @@ extern char **environ;
 		[[LSApplicationWorkspace defaultWorkspace] openApplicationWithBundleID:bundleID];
 		return;
 	}
+	LBLog(@"launch: %@ (child=%d)", bundleID, sChild);
 	if (sChild > 0) return;
 
 	LSApplicationProxy *proxy = [LSApplicationProxy applicationProxyForIdentifier:bundleID];
 	NSString *exe = [proxy.bundleURL.path stringByAppendingPathComponent:proxy.bundleExecutable];
 	NSString *home = proxy.dataContainerURL.path ?: @"/var/mobile";
-	if (!proxy || !proxy.bundleExecutable) return;
+	if (!proxy || !proxy.bundleExecutable) { LBLog(@"launch: no executable for %@", bundleID); return; }
 
 	// Build everything the child needs before fork(); no ObjC after it.
 	const char *cexe = strdup(exe.fileSystemRepresentation);
@@ -53,11 +54,13 @@ extern char **environ;
 	if (pid < 0) return;
 
 	sChild = pid;
+	LBLog(@"launch: forked pid %d for %@", pid, exe);
 	[(LBAppDelegate *)[UIApplication sharedApplication].delegate hideHome];
 
 	sExitWatch = dispatch_source_create(DISPATCH_SOURCE_TYPE_PROC, pid, DISPATCH_PROC_EXIT, dispatch_get_main_queue());
 	dispatch_source_set_event_handler(sExitWatch, ^{
 		int st; waitpid(sChild, &st, WNOHANG);
+		LBLog(@"launch: child exited status=0x%x", st);
 		sChild = 0;
 		dispatch_source_cancel(sExitWatch);
 		sExitWatch = nil;
